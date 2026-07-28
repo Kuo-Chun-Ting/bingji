@@ -16,6 +16,16 @@ export interface JsonFileOperations {
 export interface JsonDatabase {
   read(): Promise<DatabaseFile>
   write(database: DatabaseFile): Promise<void>
+  mutate<Result>(mutation: DatabaseMutation<Result>): Promise<Result>
+}
+
+export type DatabaseMutation<Result> = (
+  database: DatabaseFile,
+) => DatabaseMutationResult<Result> | Promise<DatabaseMutationResult<Result>>
+
+export interface DatabaseMutationResult<Result> {
+  database: DatabaseFile
+  result: Result
 }
 
 const nodeFileOperations: JsonFileOperations = { readFile, writeFile, rename }
@@ -34,23 +44,50 @@ export function createJsonDatabase(
     write: async (database: DatabaseFile): Promise<void> => {
       const content = JSON.stringify(database, null, 2)
       const tempFile = `${dataFile}.${process.pid}.${tempFileSequence++}.tmp`
-      const writeOperation = async (): Promise<void> => {
-        await fileOperations.writeFile(tempFile, content, 'utf8')
-        await fileOperations.rename(tempFile, dataFile)
-      }
-
-      const writeQueue = writeQueues.get(dataFile) ?? Promise.resolve()
-      const save = writeQueue.then(writeOperation, writeOperation)
-      const nextWriteQueue = save.catch(() => undefined)
-      writeQueues.set(dataFile, nextWriteQueue)
-      void nextWriteQueue.finally(() => {
-        if (writeQueues.get(dataFile) === nextWriteQueue) {
-          writeQueues.delete(dataFile)
-        }
+      await serializeDatabaseOperation(dataFile, async () => {
+        await writeDatabase(fileOperations, tempFile, dataFile, content)
       })
-      await save
+    },
+    mutate: async <Result>(mutation: DatabaseMutation<Result>): Promise<Result> => {
+      return serializeDatabaseOperation(dataFile, async () => {
+        const content = await fileOperations.readFile(dataFile, 'utf8')
+        const currentDatabase = parseDatabase(content)
+        const updatedDatabase = await mutation(currentDatabase)
+        const updatedContent = JSON.stringify(updatedDatabase.database, null, 2)
+        const tempFile = `${dataFile}.${process.pid}.${tempFileSequence++}.tmp`
+
+        await writeDatabase(fileOperations, tempFile, dataFile, updatedContent)
+        return updatedDatabase.result
+      })
     },
   }
+}
+
+async function serializeDatabaseOperation<Result>(
+  dataFile: string,
+  operation: () => Promise<Result>,
+): Promise<Result> {
+  const writeQueue = writeQueues.get(dataFile) ?? Promise.resolve()
+  const result = writeQueue.then(operation, operation)
+  const nextWriteQueue = result.then(() => undefined, () => undefined)
+  writeQueues.set(dataFile, nextWriteQueue)
+  void nextWriteQueue.finally(() => {
+    if (writeQueues.get(dataFile) === nextWriteQueue) {
+      writeQueues.delete(dataFile)
+    }
+  })
+
+  return result
+}
+
+async function writeDatabase(
+  fileOperations: JsonFileOperations,
+  tempFile: string,
+  dataFile: string,
+  content: string,
+): Promise<void> {
+  await fileOperations.writeFile(tempFile, content, 'utf8')
+  await fileOperations.rename(tempFile, dataFile)
 }
 
 function parseDatabase(content: string): DatabaseFile {

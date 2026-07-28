@@ -13,24 +13,28 @@ export default defineEventHandler(async event => {
   }
 
   const jsonDatabase = createJsonDatabase(config.dataFile)
-  const database = await jsonDatabase.read()
-  const course = database.courses.find(candidate => candidate.id === courseId)
-  if (!course) {
-    throw createError({ statusCode: 404, statusMessage: 'Course not found' })
-  }
+  const registration = await jsonDatabase.mutate(database => {
+    const course = database.courses.find(candidate => candidate.id === courseId)
+    if (!course) {
+      throw createError({ statusCode: 404, statusMessage: 'Course not found' })
+    }
 
-  try {
-    const registration = createRegistration(course, session.phone, database.registrations, new Date().toISOString())
-    await jsonDatabase.write({
-      ...database,
-      registrations: [...database.registrations, registration],
-    })
+    try {
+      const registration = createRegistration(course, session.phone, database.registrations, new Date().toISOString())
+      return {
+        database: {
+          ...database,
+          registrations: [...database.registrations, registration],
+        },
+        result: registration,
+      }
+    } catch (error) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: error instanceof Error ? error.message : 'Unable to register for this course',
+      })
+    }
+  })
 
-    return { registration }
-  } catch (error) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: error instanceof Error ? error.message : 'Unable to register for this course',
-    })
-  }
+  return { registration }
 })

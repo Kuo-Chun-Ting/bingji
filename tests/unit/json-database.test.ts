@@ -1,7 +1,9 @@
 import { expect, test } from 'vitest'
 
+import type { Registration } from '../../shared/types/domain'
+import { createRegistration } from '../../server/domain/registrations'
 import type { DatabaseFile, JsonFileOperations } from '../../server/repositories/json-database'
-import { createJsonDatabase } from '../../server/repositories/json-database'
+import { createJsonDatabase, type JsonDatabase } from '../../server/repositories/json-database'
 
 const database: DatabaseFile = {
   courses: [
@@ -91,3 +93,82 @@ test('test_write_when_two_database_instances_overlap_then_serializes_file_operat
   expect(operationsBeforeRelease).toEqual(['write:1'])
   expect(operationLog).toEqual(['write:1', 'rename:1', 'write:2', 'rename:2'])
 })
+
+test('test_mutate_when_duplicate_registrations_run_concurrently_then_allows_one_and_rejects_one', async () => {
+  // Arrange
+  const stub_fileOperations = createInMemoryFileOperations(database)
+  const firstJsonDatabase = createJsonDatabase('/tmp/ski-mutate-duplicate.json', stub_fileOperations)
+  const secondJsonDatabase = createJsonDatabase('/tmp/ski-mutate-duplicate.json', stub_fileOperations)
+
+  // Act
+  const results = await Promise.allSettled([
+    registerStudent(firstJsonDatabase, '0912345678'),
+    registerStudent(secondJsonDatabase, '0912345678'),
+  ])
+
+  // Assert
+  expect(results.filter(result => result.status === 'fulfilled')).toHaveLength(1)
+  expect(results.filter(result => result.status === 'rejected')).toHaveLength(1)
+  expect(await firstJsonDatabase.read()).toMatchObject({
+    registrations: [
+      { id: 'course-1:0912345678', phone: '0912345678' },
+    ],
+  })
+  const rejectedResult = results.find(result => result.status === 'rejected') as PromiseRejectedResult
+  expect(rejectedResult.reason).toBeInstanceOf(Error)
+  expect(rejectedResult.reason.message).toBe('Student is already registered for this course')
+})
+
+test('test_mutate_when_unrelated_registrations_run_concurrently_then_preserves_both_updates', async () => {
+  // Arrange
+  const stub_fileOperations = createInMemoryFileOperations(database)
+  const firstJsonDatabase = createJsonDatabase('/tmp/ski-mutate-unrelated.json', stub_fileOperations)
+  const secondJsonDatabase = createJsonDatabase('/tmp/ski-mutate-unrelated.json', stub_fileOperations)
+
+  // Act
+  await Promise.all([
+    registerStudent(firstJsonDatabase, '0912345678'),
+    registerStudent(secondJsonDatabase, '0987654321'),
+  ])
+  const savedDatabase = await firstJsonDatabase.read()
+
+  // Assert
+  expect(savedDatabase.registrations).toEqual([
+    expect.objectContaining({ id: 'course-1:0912345678' }),
+    expect.objectContaining({ id: 'course-1:0987654321' }),
+  ])
+})
+
+function createInMemoryFileOperations(initialDatabase: DatabaseFile): JsonFileOperations {
+  let savedContent = JSON.stringify(initialDatabase)
+  const temporaryFiles = new Map<string, string>()
+
+  return {
+    readFile: async () => savedContent,
+    writeFile: async (filePath, content) => {
+      temporaryFiles.set(filePath, content)
+    },
+    rename: async (from) => {
+      savedContent = temporaryFiles.get(from) ?? ''
+    },
+  }
+}
+
+async function registerStudent(jsonDatabase: JsonDatabase, phone: string): Promise<Registration> {
+  return jsonDatabase.mutate(currentDatabase => {
+    const registration = createRegistration(
+      currentDatabase.courses[0],
+      phone,
+      currentDatabase.registrations,
+      '2026-07-28T10:00:00.000Z',
+    )
+
+    return {
+      database: {
+        ...currentDatabase,
+        registrations: [...currentDatabase.registrations, registration],
+      },
+      result: registration,
+    }
+  })
+}

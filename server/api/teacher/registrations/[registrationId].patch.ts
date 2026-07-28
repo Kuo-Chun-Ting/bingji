@@ -15,36 +15,41 @@ export default defineEventHandler(async event => {
 
   const registrationId = getRouterParam(event, 'registrationId')
   const body = await readBody<UpdateRegistrationBody>(event)
+  const status = body?.status
   if (!registrationId) {
     throw createError({ statusCode: 400, statusMessage: 'Registration ID is required' })
   }
-  if (!isAttendanceResult(body?.status)) {
+  if (!isAttendanceResult(status)) {
     throw createError({ statusCode: 400, statusMessage: 'A valid attendance status is required' })
   }
 
   const jsonDatabase = createJsonDatabase(config.dataFile)
-  const database = await jsonDatabase.read()
-  const registration = database.registrations.find(candidate => candidate.id === registrationId)
-  if (!registration) {
-    throw createError({ statusCode: 404, statusMessage: 'Registration not found' })
-  }
+  const updatedRegistration = await jsonDatabase.mutate(database => {
+    const registration = database.registrations.find(candidate => candidate.id === registrationId)
+    if (!registration) {
+      throw createError({ statusCode: 404, statusMessage: 'Registration not found' })
+    }
 
-  try {
-    const updatedRegistration = changeRegistrationStatus(registration, body.status, new Date().toISOString())
-    await jsonDatabase.write({
-      ...database,
-      registrations: database.registrations.map(candidate => {
-        return candidate.id === registrationId ? updatedRegistration : candidate
-      }),
-    })
+    try {
+      const updatedRegistration = changeRegistrationStatus(registration, status, new Date().toISOString())
+      return {
+        database: {
+          ...database,
+          registrations: database.registrations.map(candidate => {
+            return candidate.id === registrationId ? updatedRegistration : candidate
+          }),
+        },
+        result: updatedRegistration,
+      }
+    } catch (error) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: error instanceof Error ? error.message : 'Unable to update registration',
+      })
+    }
+  })
 
-    return { registration: updatedRegistration }
-  } catch (error) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: error instanceof Error ? error.message : 'Unable to update registration',
-    })
-  }
+  return { registration: updatedRegistration }
 })
 
 function isAttendanceResult(value: unknown): value is AttendanceResult {
