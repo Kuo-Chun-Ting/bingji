@@ -1,0 +1,20 @@
+{
+  "name": "ski-registration-system",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "nuxt dev",
+    "build": "nuxt build",
+    "preview": "nuxt preview",
+    "test": "vitest run",
+    "typecheck": "nuxt typecheck",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "@lucide/vue": "1.27.0",
+    "nuxt": "4.5.1"
+  },
+  "devDependencies": {
+    "vitest": "4.1.10"
+  }
+}
