@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { BookOpenCheck, RefreshCw } from '@lucide/vue'
-import type { Registration } from '../../shared/types/domain'
-import type { StudentDashboard } from '../../server/services/dashboard'
+import type { Registration, StudentDashboard } from '../../shared/types/domain'
+import { callAppsScriptAction } from '../utils/apps-script-api'
 import { formatCourseSchedule } from '../utils/course-presentation'
 
+const config = useRuntimeConfig()
 const dashboard = ref<StudentDashboard | null>(null)
 const errorMessage = ref('')
 const isLoading = ref(true)
@@ -37,7 +38,10 @@ async function loadDashboard(): Promise<void> {
   isLoading.value = true
   errorMessage.value = ''
   try {
-    dashboard.value = await $fetch<StudentDashboard>('/api/student/dashboard')
+    dashboard.value = await callAppsScriptAction<StudentDashboard>(
+      config.public.appsScriptUrl,
+      'getStudentDashboard',
+    )
   } catch (error) {
     errorMessage.value = getErrorMessage(error, '無法載入學員資料，請稍後再試。')
   } finally {
@@ -49,7 +53,11 @@ async function registerForCourse(courseId: string): Promise<void> {
   registeringCourseId.value = courseId
   errorMessage.value = ''
   try {
-    const response = await $fetch<{ registration: Registration }>(`/api/student/courses/${courseId}/register`, { method: 'POST' })
+    const response = await callAppsScriptAction<{ registration: Registration }>(
+      config.public.appsScriptUrl,
+      'registerCourse',
+      { courseId },
+    )
     if (dashboard.value) {
       dashboard.value = { ...dashboard.value, registrations: [...dashboard.value.registrations, response.registration] }
     }
@@ -61,11 +69,14 @@ async function registerForCourse(courseId: string): Promise<void> {
 }
 
 async function logout(): Promise<void> {
-  await $fetch('/api/auth/logout', { method: 'POST' })
   await navigateTo('/')
 }
 
 function getErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message === 'NOT_IMPLEMENTED') {
+    return '此功能尚未實作。'
+  }
+
   if (error && typeof error === 'object' && 'data' in error) {
     const data = error.data
     if (data && typeof data === 'object' && 'statusMessage' in data && typeof data.statusMessage === 'string') {

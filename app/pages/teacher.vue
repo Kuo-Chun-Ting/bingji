@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { Ban, Check, CircleX, RefreshCw, UsersRound } from '@lucide/vue'
-import type { AttendanceResult, Registration } from '../../shared/types/domain'
-import type { TeacherDashboard } from '../../server/services/dashboard'
+import type { AttendanceResult, Registration, TeacherDashboard } from '../../shared/types/domain'
+import { callAppsScriptAction } from '../utils/apps-script-api'
 import { formatCourseSchedule } from '../utils/course-presentation'
 
+const config = useRuntimeConfig()
 const dashboard = ref<TeacherDashboard | null>(null)
 const errorMessage = ref('')
 const isLoading = ref(true)
@@ -28,7 +29,10 @@ async function loadDashboard(): Promise<void> {
   isLoading.value = true
   errorMessage.value = ''
   try {
-    dashboard.value = await $fetch<TeacherDashboard>('/api/teacher/dashboard')
+    dashboard.value = await callAppsScriptAction<TeacherDashboard>(
+      config.public.appsScriptUrl,
+      'getTeacherDashboard',
+    )
   } catch (error) {
     errorMessage.value = getErrorMessage(error, '無法載入教練資料，請稍後再試。')
   } finally {
@@ -40,10 +44,11 @@ async function updateAttendance(registrationId: string, status: AttendanceResult
   updatingRegistrationId.value = registrationId
   errorMessage.value = ''
   try {
-    const response = await $fetch<{ registration: Registration }>(`/api/teacher/registrations/${registrationId}`, {
-      method: 'PATCH',
-      body: { status },
-    })
+    const response = await callAppsScriptAction<{ registration: Registration }>(
+      config.public.appsScriptUrl,
+      'updateAttendance',
+      { registrationId, status },
+    )
     if (dashboard.value) {
       const remainingLessons = { ...dashboard.value.remainingLessons }
       if (response.registration.status === 'attended') {
@@ -73,11 +78,14 @@ function getRemainingLessons(phone: string): number {
 }
 
 async function logout(): Promise<void> {
-  await $fetch('/api/auth/logout', { method: 'POST' })
   await navigateTo('/')
 }
 
 function getErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message === 'NOT_IMPLEMENTED') {
+    return '此功能尚未實作。'
+  }
+
   if (error && typeof error === 'object' && 'data' in error) {
     const data = error.data
     if (data && typeof data === 'object' && 'statusMessage' in data && typeof data.statusMessage === 'string') {

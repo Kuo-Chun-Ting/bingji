@@ -49,6 +49,11 @@ h3 { margin-bottom: 5px; font-size: 16px; line-height: 1.4; }
 .auth-forms { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .auth-panel, .course-card, .course-panel { border: 1px solid #d8dfdc; border-radius: 8px; background: #fff; }
 .auth-panel { padding: 24px; }
+.connection-panel { width: min(100%, 480px); }
+.connection-status { display: flex; min-height: 56px; align-items: center; gap: 10px; padding: 14px; border-left: 4px solid; }
+.connection-status--checking { color: #40504a; border-color: #aab8b2; background: #edf1ef; }
+.connection-status--connected { color: #096654; border-color: #4c8f7e; background: #eaf4f0; }
+.connection-status--disconnected { color: #9a351a; border-color: #d76a22; background: #fff1e9; }
 .auth-panel__heading { display: flex; gap: 12px; min-height: 64px; margin-bottom: 24px; }
 .auth-panel__heading p { margin-bottom: 0; font-size: 14px; }
 .panel-icon { display: grid; width: 40px; height: 40px; flex: 0 0 40px; place-items: center; border-radius: 8px; }

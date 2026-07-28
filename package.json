@@ -5,9 +5,14 @@
   "scripts": {
     "dev": "nuxt dev",
     "build": "nuxt build",
+    "generate": "nuxt generate",
     "preview": "nuxt preview",
     "test": "vitest run",
     "typecheck": "nuxt typecheck",
+    "apps:login": "npm --prefix apps-script run login",
+    "apps:status": "npm --prefix apps-script run status",
+    "apps:push": "npm --prefix apps-script run push",
+    "apps:deploy": "npm --prefix apps-script run deploy",
     "postinstall": "nuxt prepare"
   },
   "dependencies": {

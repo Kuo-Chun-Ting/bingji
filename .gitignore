@@ -6,3 +6,5 @@ node_modules/
 !.env.example
 coverage/
 dist/
+dist
+apps-script/.clasp.json

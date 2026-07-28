@@ -1,0 +1,13 @@
+{
+  "name": "ski-registration-apps-script",
+  "private": true,
+  "scripts": {
+    "login": "clasp login",
+    "status": "clasp status",
+    "push": "clasp push",
+    "deploy": "clasp deploy"
+  },
+  "devDependencies": {
+    "@google/clasp": "3.3.0"
+  }
+}

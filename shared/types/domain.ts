@@ -24,3 +24,17 @@ export interface Registration {
   createdAt: string
   updatedAt: string
 }
+
+export interface StudentDashboard {
+  student: Student
+  remainingLessons: number
+  courses: Course[]
+  registrations: Registration[]
+}
+
+export interface TeacherDashboard {
+  students: Student[]
+  courses: Course[]
+  registrations: Registration[]
+  remainingLessons: Record<string, number>
+}
