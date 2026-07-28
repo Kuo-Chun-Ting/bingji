@@ -1,5 +1,5 @@
 import type { AttendanceResult, Course, Registration } from '../../shared/types/domain'
-import { normalizePhone } from './students'
+import { isValidNormalizedPhone, normalizePhone } from './students'
 
 export function createRegistration(
   course: Course,
@@ -17,8 +17,8 @@ export function createRegistration(
     throw new Error('Phone is required')
   }
 
-  if (!/^09\d{8}$/.test(normalizedPhone)) {
-    throw new Error('Invalid Taiwanese mobile phone')
+  if (!isValidNormalizedPhone(normalizedPhone)) {
+    throw new Error(`Invalid phone: ${normalizedPhone}`)
   }
 
   const isDuplicate = registrations.some(registration => {

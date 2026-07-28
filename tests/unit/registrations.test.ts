@@ -48,15 +48,15 @@ test('test_createRegistration_when_phone_normalizes_to_empty_then_throws_error',
   expect(register).toThrow('Phone is required')
 })
 
-test('test_createRegistration_when_phone_is_not_taiwanese_mobile_then_throws_error', () => {
+test('test_createRegistration_when_phone_has_fewer_than_eight_digits_then_throws_error', () => {
   // Arrange
   const now = '2026-07-28T10:00:00.000Z'
 
   // Act
-  const register = () => createRegistration(openCourse, '0212345678', [], now)
+  const register = () => createRegistration(openCourse, '1234567', [], now)
 
   // Assert
-  expect(register).toThrow('Invalid Taiwanese mobile phone')
+  expect(register).toThrow('Invalid phone: 1234567')
 })
 
 test('test_createRegistration_when_student_already_registered_for_course_then_throws_error', () => {
@@ -82,6 +82,24 @@ test('test_createRegistration_when_course_is_open_and_phone_is_formatted_then_re
     id: 'course-1:0912345678',
     courseId: 'course-1',
     phone: '0912345678',
+    status: 'registered',
+    createdAt: now,
+    updatedAt: now,
+  })
+})
+
+test('test_createRegistration_when_phone_is_valid_landline_then_returns_registered_record', () => {
+  // Arrange
+  const now = '2026-07-28T10:00:00.000Z'
+
+  // Act
+  const registration = createRegistration(openCourse, '02-1234-5678', [], now)
+
+  // Assert
+  expect(registration).toEqual({
+    id: 'course-1:0212345678',
+    courseId: 'course-1',
+    phone: '0212345678',
     status: 'registered',
     createdAt: now,
     updatedAt: now,

@@ -84,6 +84,20 @@ test('test_parseStudentRows_when_normalized_phones_are_duplicate_then_throws_err
   expect(parseRows).toThrow('Duplicate phone: 0912345678')
 })
 
+test('test_parseStudentRows_when_phone_has_fewer_than_eight_digits_then_throws_error', () => {
+  // Arrange
+  const rows = [
+    ['姓名', '電話', 'Email', '購買堂數'],
+    ['王小明', '123-4567', 'ming@example.com', '8'],
+  ]
+
+  // Act
+  const parseRows = () => parseStudentRows(rows)
+
+  // Assert
+  expect(parseRows).toThrow('Invalid phone: 1234567')
+})
+
 test('test_parseStudentRows_when_purchased_lessons_is_numeric_text_then_parses_number', () => {
   // Arrange
   const rows = [

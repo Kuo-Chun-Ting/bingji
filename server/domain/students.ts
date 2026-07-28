@@ -1,9 +1,14 @@
 import type { Student } from '../../shared/types/domain'
 
 const EXPECTED_HEADERS = ['姓名', '電話', 'Email', '購買堂數'] as const
+const NORMALIZED_PHONE_PATTERN = /^\d{8,15}$/
 
 export function normalizePhone(phone: string): string {
   return phone.replace(/\D/g, '')
+}
+
+export function isValidNormalizedPhone(phone: string): boolean {
+  return NORMALIZED_PHONE_PATTERN.test(phone)
 }
 
 export function parseStudentRows(rows: unknown[][]): Student[] {
@@ -26,6 +31,10 @@ export function parseStudentRows(rows: unknown[][]): Student[] {
 
     if (!phone) {
       throw new Error('Phone is required')
+    }
+
+    if (!isValidNormalizedPhone(phone)) {
+      throw new Error(`Invalid phone: ${phone}`)
     }
 
     if (phones.has(phone)) {
