@@ -24,7 +24,49 @@ test('test_parseStudentRows_when_required_header_is_missing_then_throws_error', 
   const parseRows = () => parseStudentRows(rows)
 
   // Assert
-  expect(parseRows).toThrow('Missing required header: 購買堂數')
+  expect(parseRows).toThrow('Invalid headers: expected 姓名, 電話, Email, 購買堂數')
+})
+
+test('test_parseStudentRows_when_extra_header_is_present_then_throws_error', () => {
+  // Arrange
+  const rows = [
+    ['姓名', '電話', 'Email', '購買堂數', '備註'],
+    ['王小明', '0912345678', 'ming@example.com', '8', 'test'],
+  ]
+
+  // Act
+  const parseRows = () => parseStudentRows(rows)
+
+  // Assert
+  expect(parseRows).toThrow('Invalid headers: expected 姓名, 電話, Email, 購買堂數')
+})
+
+test('test_parseStudentRows_when_headers_are_reordered_then_throws_error', () => {
+  // Arrange
+  const rows = [
+    ['姓名', 'Email', '電話', '購買堂數'],
+    ['王小明', 'ming@example.com', '0912345678', '8'],
+  ]
+
+  // Act
+  const parseRows = () => parseStudentRows(rows)
+
+  // Assert
+  expect(parseRows).toThrow('Invalid headers: expected 姓名, 電話, Email, 購買堂數')
+})
+
+test('test_parseStudentRows_when_header_is_duplicated_then_throws_error', () => {
+  // Arrange
+  const rows = [
+    ['姓名', '電話', '電話', '購買堂數'],
+    ['王小明', '0912345678', 'ming@example.com', '8'],
+  ]
+
+  // Act
+  const parseRows = () => parseStudentRows(rows)
+
+  // Assert
+  expect(parseRows).toThrow('Invalid headers: expected 姓名, 電話, Email, 購買堂數')
 })
 
 test('test_parseStudentRows_when_normalized_phones_are_duplicate_then_throws_error', () => {
@@ -61,4 +103,18 @@ test('test_parseStudentRows_when_purchased_lessons_is_numeric_text_then_parses_n
       purchasedLessons: 8,
     },
   ])
+})
+
+test('test_parseStudentRows_when_purchased_lessons_is_empty_then_throws_error', () => {
+  // Arrange
+  const rows = [
+    ['姓名', '電話', 'Email', '購買堂數'],
+    ['王小明', '0912-345-678', 'ming@example.com', ''],
+  ]
+
+  // Act
+  const parseRows = () => parseStudentRows(rows)
+
+  // Assert
+  expect(parseRows).toThrow('Invalid purchased lessons: ')
 })

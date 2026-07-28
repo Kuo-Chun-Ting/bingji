@@ -37,6 +37,28 @@ test('test_createRegistration_when_course_is_closed_then_throws_error', () => {
   expect(register).toThrow('Course is closed')
 })
 
+test('test_createRegistration_when_phone_normalizes_to_empty_then_throws_error', () => {
+  // Arrange
+  const now = '2026-07-28T10:00:00.000Z'
+
+  // Act
+  const register = () => createRegistration(openCourse, '---', [], now)
+
+  // Assert
+  expect(register).toThrow('Phone is required')
+})
+
+test('test_createRegistration_when_phone_is_not_taiwanese_mobile_then_throws_error', () => {
+  // Arrange
+  const now = '2026-07-28T10:00:00.000Z'
+
+  // Act
+  const register = () => createRegistration(openCourse, '0212345678', [], now)
+
+  // Assert
+  expect(register).toThrow('Invalid Taiwanese mobile phone')
+})
+
 test('test_createRegistration_when_student_already_registered_for_course_then_throws_error', () => {
   // Arrange
   const now = '2026-07-28T10:00:00.000Z'

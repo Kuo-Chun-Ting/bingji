@@ -12,6 +12,15 @@ export function createRegistration(
   }
 
   const normalizedPhone = normalizePhone(phone)
+
+  if (!normalizedPhone) {
+    throw new Error('Phone is required')
+  }
+
+  if (!/^09\d{8}$/.test(normalizedPhone)) {
+    throw new Error('Invalid Taiwanese mobile phone')
+  }
+
   const isDuplicate = registrations.some(registration => {
     return registration.courseId === course.id && normalizePhone(registration.phone) === normalizedPhone
   })

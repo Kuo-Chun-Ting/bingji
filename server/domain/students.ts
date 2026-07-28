@@ -1,6 +1,6 @@
 import type { Student } from '../../shared/types/domain'
 
-const REQUIRED_HEADERS = ['姓名', '電話', 'Email', '購買堂數'] as const
+const EXPECTED_HEADERS = ['姓名', '電話', 'Email', '購買堂數'] as const
 
 export function normalizePhone(phone: string): string {
   return phone.replace(/\D/g, '')
@@ -8,24 +8,20 @@ export function normalizePhone(phone: string): string {
 
 export function parseStudentRows(rows: unknown[][]): Student[] {
   const headerRow = rows[0] ?? []
-  const headers = headerRow.map(value => String(value ?? '').trim())
-  const indexes = REQUIRED_HEADERS.map(header => {
-    const index = headers.indexOf(header)
+  const headers = headerRow.map(value => String(value ?? ''))
 
-    if (index === -1) {
-      throw new Error(`Missing required header: ${header}`)
-    }
-
-    return index
-  })
+  if (headers.length !== EXPECTED_HEADERS.length
+    || headers.some((header, index) => header !== EXPECTED_HEADERS[index])) {
+    throw new Error(`Invalid headers: expected ${EXPECTED_HEADERS.join(', ')}`)
+  }
 
   const phones = new Set<string>()
 
   return rows.slice(1).filter(row => row.some(value => String(value ?? '').trim() !== '')).map(row => {
-    const name = String(row[indexes[0]] ?? '').trim()
-    const phone = normalizePhone(String(row[indexes[1]] ?? '').trim())
-    const email = String(row[indexes[2]] ?? '').trim()
-    const purchasedLessonsText = String(row[indexes[3]] ?? '').trim()
+    const name = String(row[0] ?? '').trim()
+    const phone = normalizePhone(String(row[1] ?? '').trim())
+    const email = String(row[2] ?? '').trim()
+    const purchasedLessonsText = String(row[3] ?? '').trim()
     const purchasedLessons = Number(purchasedLessonsText)
 
     if (!phone) {
@@ -36,7 +32,7 @@ export function parseStudentRows(rows: unknown[][]): Student[] {
       throw new Error(`Duplicate phone: ${phone}`)
     }
 
-    if (!Number.isInteger(purchasedLessons) || purchasedLessons < 0) {
+    if (!purchasedLessonsText || !Number.isInteger(purchasedLessons) || purchasedLessons < 0) {
       throw new Error(`Invalid purchased lessons: ${purchasedLessonsText}`)
     }
 
