@@ -2,67 +2,96 @@
 
 ## 目標
 
-建立供學員報名每週課程、查看剩餘堂數，以及供老師確認實際到課狀態的本機 MVP。
+建立供學員報名每週課程、查看剩餘堂數，以及供老師確認實際到課狀態的 MVP。
 
-## 技術架構
+## 架構
 
-- 使用 Nuxt 4、Vue 及 TypeScript 建立全端網站。
-- Nuxt Server 使用 API key 讀取公開 Google Sheet。
-- Google Sheet 保存學員主檔與購買堂數。
-- 本機 JSON 保存課程、報名及到課狀態。
-- 不使用 Apps Script、MCP Server 或資料庫。
-- 本階段只使用測試資料，不在公開 Sheet 放置真實個資。
+- Nuxt 4 提供靜態前端。
+- Google Apps Script 提供公開 HTTP API，並以部署者的 Google 帳號權限讀寫 Google Sheet。
+- 前端只呼叫 Apps Script，不直接存取 Google Sheet。
+- 不使用 Nuxt Server、本機 JSON、LINE 登入或其他資料庫。
 
 ## Google Sheet
 
-固定欄位：
+使用兩個 Spreadsheet。
 
-- 姓名
-- 電話
-- Email
-- 購買堂數
+原始報名 Spreadsheet 只讀，固定欄位：
 
-電話不可重複，並作為學員識別資料。
+- `姓名`
+- `電話`
+- `Email`
+- `購買堂數`
 
-## 本機資料
+營運 Spreadsheet 包含三個分頁：
 
-JSON 保存：
+- `accounts`：`phone`、`password`
+- `courses`：`id`、`date`、`startTime`、`endTime`、`isOpen`
+- `registrations`：`id`、`courseId`、`phone`、`status`、`createdAt`、`updatedAt`
 
-- 課程日期、時間與開放狀態
-- 學員的「我要參加」紀錄
-- 實際到課、未到課及取消狀態
-- 狀態更新時間
+電話正規化後不可重複，並作為學員識別資料。課程由 owner 直接在 `courses` 分頁維護。
 
-剩餘堂數等於 Google Sheet 購買堂數減去 JSON 中實際到課次數。
+## Apps Script 設定
 
-## 權限
+Script Properties 保存：
 
-- 學員使用電話登入，只能查看自己的資料與送出自己的「我要參加」。
-- 老師使用環境設定中的密碼登入。
-- 老師可以查看全部學員與課程。
-- 老師不能替學員新增「我要參加」。
-- 老師只能將已報名紀錄更新為實際到課、未到課或取消。
+- `SOURCE_SPREADSHEET_ID`
+- `OPERATIONS_SPREADSHEET_ID`
+- `TEACHER_PHONE`
+- `TEACHER_PASSWORD`
+- `SESSION_SECRET`
 
-## 頁面
+MVP 使用測試密碼明碼。API 不回傳或記錄密碼。正式使用前必須改用 LINE 登入或安全的密碼儲存方式。
 
-- 登入頁：學員電話登入與老師密碼登入。
-- 學員頁：剩餘堂數、可報名課程及歷史紀錄。
-- 老師頁：依課程查看報名名單並更新到課狀態。
+## 登入與權限
 
-## 錯誤處理
+- 老師與學員使用同一個電話加密碼表單。
+- 老師帳密由 Script Properties 驗證。
+- 學員帳密由營運 Spreadsheet 的 `accounts` 分頁驗證。
+- 登入成功後，Apps Script 回傳包含電話、角色與到期時間的簽章 token。
+- 前端保存 token，後續 API 請求都必須攜帶 token。
+- Apps Script 每次請求都驗證 token，不信任前端傳入的電話或角色。
+- 學員只能查看自己的資料及新增自己的 `registered` 紀錄。
+- 老師可以查看全部資料，但不能替學員新增報名。
+- 老師只能將 `registered` 更新為 `attended`、`absent` 或 `cancelled`。
 
-- Google Sheet 無法讀取時顯示明確錯誤。
-- 電話不存在、重複報名或狀態不合法時拒絕操作。
-- JSON 寫入失敗時不回報操作成功。
+## 堂數
+
+- 剩餘堂數等於原始購買堂數減去該學員的 `attended` 紀錄數。
+- 報名不扣堂。
+- 老師確認 `attended` 時才影響剩餘堂數。
+- 原始報名 Spreadsheet 永遠不修改。
+
+## API
+
+- `GET`：回傳服務健康狀態。
+- `login`：驗證電話與密碼，回傳 token 與角色。
+- `getStudentDashboard`：回傳登入學員、剩餘堂數、課程及自己的報名紀錄。
+- `registerCourse`：替登入學員新增報名。
+- `getTeacherDashboard`：回傳全部學員、課程、報名及剩餘堂數。
+- `updateAttendance`：更新已報名紀錄的到課狀態。
+
+所有寫入操作使用 Apps Script LockService，避免重複報名或同時更新造成資料衝突。
+
+## 前端
+
+- 首頁提供統一的電話與密碼登入。
+- 登入後依角色導向學員頁或老師頁。
+- 學員頁顯示剩餘堂數、可報名課程及歷史紀錄。
+- 老師頁依課程顯示報名名單並更新到課狀態。
+- 登出清除本機 token 並返回首頁。
+- API 錯誤顯示明確訊息，不保留失敗操作的前端假狀態。
 
 ## 測試
 
-單元測試涵蓋堂數計算、Google Sheet 資料轉換、報名限制、狀態轉換及權限判斷，不測 Google API 或 Nuxt 框架本身。
+- 單元測試涵蓋電話正規化、Sheet 資料轉換、登入、token、權限、剩餘堂數、重複報名與狀態轉換。
+- 測試 Apps Script 對 Sheet gateway 的輸入、輸出與錯誤處理，不測 Google Sheet 或 Apps Script 平台本身。
+- 測試命名使用 `test_{function_name}_when_{condition}_then_{expected_result}`，並使用 Arrange、Act、Assert 分段。
 
 ## MVP 不包含
 
-- 加購、付款與退費
 - LINE 登入或通知
+- 加購、付款與退費
+- 密碼修改或重設介面
+- 課程管理介面
 - 手機驗證碼
 - 候補與人數上限
-- 正式部署與多人環境的持久化保證
