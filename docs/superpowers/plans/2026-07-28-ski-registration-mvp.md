@@ -6,7 +6,7 @@
 
 **Architecture:** Nuxt 4 serves the Vue UI and typed server API routes. The server reads a public Google Sheet through the Google Sheets API, stores courses and registrations in one local JSON file, and uses signed cookies for student and teacher sessions.
 
-**Tech Stack:** Nuxt 4.5.1, Vue 3, TypeScript, Vitest 4, Lucide Vue Next, Node.js file storage
+**Tech Stack:** Nuxt 4.5.1, Vue 3, TypeScript, Vitest 4, Lucide Vue, Node.js file storage
 
 ## Global Constraints
 
