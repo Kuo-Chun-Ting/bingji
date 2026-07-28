@@ -33,3 +33,27 @@
 - Phone comparison uses normalized values; remaining lessons counts only matching `attended` registrations.
 - Registration status changes are one-way from `registered` to `attended`, `absent`, or `cancelled`.
 - Existing changes to `docs/superpowers/plans/2026-07-28-ski-registration-mvp.md` were preserved and excluded from the Task 2 commit.
+
+## Review Fix Round 1
+
+### Changes
+
+- `parseStudentRows` now accepts only the exact four headers in the required order and rejects extra, reordered, duplicate, or missing headers.
+- `createRegistration` now rejects empty normalized phones and non-Taiwanese mobile numbers that do not match `09` plus eight digits.
+- `parseStudentRows` now rejects an empty `購買堂數` cell before numeric conversion.
+- Authentication identity and teacher authorization remain outside pure domain functions; Task 3 must derive the student target phone from the signed session and enforce teacher authorization at API boundaries.
+
+### RED/GREEN Evidence
+
+- RED: `npm test -- tests/unit/students.test.ts tests/unit/registrations.test.ts` reported 7 expected failures and 10 passing tests for the new review regression cases.
+- GREEN: the same focused command passed with 2 test files and 17 tests.
+
+### Verification
+
+- `npm test`: passed, 4 test files and 20 tests.
+- `npm run typecheck`: passed with exit code 0.
+- `git diff --check`: passed with no whitespace errors.
+
+### Fix Commit
+
+- `7e6839b fix: tighten ski registration domain validation`
