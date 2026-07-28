@@ -5,7 +5,8 @@
     "login": "clasp login",
     "status": "clasp status",
     "push": "clasp push",
-    "deploy": "clasp deploy"
+    "deploy": "clasp deploy",
+    "redeploy": "clasp redeploy AKfycbzwz267TbSgpLztLV8ykzMwiuZvnmjQrHN_WtX3IPozFZCv7su3Rv-4rEAUe95UfWuAiw"
   },
   "devDependencies": {
     "@google/clasp": "3.3.0"

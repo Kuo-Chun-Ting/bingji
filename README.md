@@ -1,19 +1,15 @@
 # Ski Registration System
 
-## Apps Script 設定
+## Apps Script 部署
 
-Apps Script 原始碼位於 `apps-script/`，透過 `clasp` 同步到 Google Apps Script。
+Apps Script 原始碼位於 `apps-script/`。部署使用 `scripts/` 內的兩個可執行 shell script。
 
-### 安裝依賴
+### 一次性設定
 
 ```bash
 npm install
 npm install --prefix apps-script
 ```
-
-第一個指令安裝前端依賴，第二個指令安裝 Apps Script 使用的 `clasp`。
-
-### 初次連接
 
 1. 在 [Apps Script 設定](https://script.google.com/home/usersettings) 啟用 Apps Script API。
 2. 登入擁有 Apps Script 專案的 Google 帳號：
@@ -22,42 +18,47 @@ npm install --prefix apps-script
 npm run apps:login
 ```
 
-這個指令會開啟 Google OAuth 授權頁面，讓 `clasp` 管理該帳號的 Apps Script 專案。
+3. 建立 `apps-script/.clasp.json`：
 
-3. 建立本機專案設定：
-
-```bash
-cp apps-script/.clasp.json.example apps-script/.clasp.json
+```json
+{
+  "scriptId": "YOUR_APPS_SCRIPT_ID",
+  "rootDir": "."
+}
 ```
 
-將 Google Apps Script 專案的 Script ID 填入 `apps-script/.clasp.json`。這個檔案只保留在本機，不會提交到 Git。
+將 `YOUR_APPS_SCRIPT_ID` 替換為目標 Apps Script 的 Script ID。這個檔案只保留在本機，不提交 Git。
 
-### 同步與部署
+上述設定只在首次連接 Apps Script，或更換 Apps Script 專案時執行。
 
-```bash
-npm run apps:status
-```
-
-列出會同步到 Google Apps Script 的檔案，不會修改遠端內容。
+### 第一次部署
 
 ```bash
-npm run apps:push
+./scripts/deploy-apps-script-init.sh
 ```
 
-將 `apps-script/Code.js` 和 `apps-script/appsscript.json` 上傳到 Google Apps Script。這個動作只更新原始碼，不會建立公開網址。
+此指令會上傳 Apps Script 並建立 Web App deployment。Google 會印出 deployment ID。
 
-```bash
-npm run apps:deploy
-```
+將該 ID 填入 `apps-script/package.json` 的 `redeploy` 指令，取代 `REPLACE_WITH_DEPLOYMENT_ID`。這只需要做一次。
 
-建立 Apps Script Web App 部署版本，供前端透過 HTTP 呼叫。
-
-### 前端設定
-
-將部署後取得的 Web App URL 寫入 `.env`：
+Web App URL 格式如下，將 deployment ID 代入後寫入 `.env`：
 
 ```env
 NUXT_PUBLIC_APPS_SCRIPT_URL=https://script.google.com/macros/s/DEPLOYMENT_ID/exec
 ```
 
-重新啟動前端後，首頁會檢查 Apps Script 是否可以連線。
+### 後續部署
+
+```bash
+./scripts/deploy-apps-script.sh
+```
+
+此指令會上傳 Apps Script 並更新既有 Web App deployment。Web App URL 維持不變。
+
+### 檢查同步內容
+
+```bash
+npm run apps:status
+```
+
+列出會上傳到 Google Apps Script 的檔案，不會修改遠端內容。

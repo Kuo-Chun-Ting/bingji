@@ -13,6 +13,7 @@
     "apps:status": "npm --prefix apps-script run status",
     "apps:push": "npm --prefix apps-script run push",
     "apps:deploy": "npm --prefix apps-script run deploy",
+    "apps:redeploy": "npm --prefix apps-script run redeploy",
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
