@@ -57,3 +57,27 @@
 ### Fix Commit
 
 - `7e6839b fix: tighten ski registration domain validation`
+
+## Review Fix Round 2
+
+### Changes
+
+- Added shared `isValidNormalizedPhone`, requiring normalized phone values to contain 8 to 15 digits.
+- Applied the shared rule in both `parseStudentRows` and `createRegistration`.
+- Added coverage for rejecting an imported phone shorter than eight digits and accepting a valid landline-style registration.
+- The shared rule allows both mobile and landline numbers; authentication identity and authorization remain Task 3 API-boundary responsibilities.
+
+### RED/GREEN Evidence
+
+- RED: `npm test -- tests/unit/students.test.ts tests/unit/registrations.test.ts` reported 3 expected failures and 16 passing tests.
+- GREEN: the same focused command passed with 2 test files and 19 tests.
+
+### Verification
+
+- `npm test`: passed, 4 test files and 22 tests.
+- `npm run typecheck`: passed with exit code 0.
+- `git diff --check`: passed with no whitespace errors.
+
+### Fix Commit
+
+- `39caeb6 fix: share phone validation across domains`
