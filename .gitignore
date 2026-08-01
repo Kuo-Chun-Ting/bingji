@@ -8,3 +8,5 @@ coverage/
 dist/
 dist
 apps-script/.clasp.json
+.superpowers/
+docs/superpowers/
