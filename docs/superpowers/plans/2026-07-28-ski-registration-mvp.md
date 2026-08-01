@@ -1,160 +1,171 @@
-# Ski Registration MVP Implementation Plan
+# Ski Registration Apps Script MVP Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build a local Nuxt MVP where students register for ski lessons, teachers record attendance, Google Sheets supplies purchased lesson counts, and local JSON stores lesson state.
+**Goal:** Implement phone/password login, student registration, teacher attendance, and Google Sheet persistence through the deployed Apps Script API.
 
-**Architecture:** Nuxt 4 serves the Vue UI and typed server API routes. The server reads a public Google Sheet through the Google Sheets API, stores courses and registrations in one local JSON file, and uses signed cookies for student and teacher sessions.
+**Architecture:** Nuxt remains a static frontend. Apps Script owns authentication, authorization, domain rules, and access to one read-only source Spreadsheet plus one writable operations Spreadsheet.
 
-**Tech Stack:** Nuxt 4.5.1, Vue 3, TypeScript, Vitest 4, Lucide Vue, Node.js file storage
+**Tech Stack:** Nuxt 4, Vue 3, TypeScript, Vitest 4, Google Apps Script V8, Google Sheets
 
 ## Global Constraints
 
-- Google Sheet columns are exactly `姓名`, `電話`, `Email`, `購買堂數`.
-- One normalized phone number identifies one student.
-- Google Sheet stores student data and purchased lesson counts only.
-- Local JSON stores courses, registrations, attendance status, and timestamps.
-- Remaining lessons equal purchased lessons minus `attended` registrations.
-- Students can create only their own `registered` record.
-- Teachers cannot register students and can only change `registered` to `attended`, `absent`, or `cancelled`.
-- Teacher password, session secret, Google API key, spreadsheet ID, and sheet range come from private runtime configuration.
-- Tests follow `test_{function_name}_when_{condition}_then_{expected_result}` names with Arrange, Act, and Assert sections.
-- No database, Apps Script, MCP server, payment, LINE integration, SMS, waiting list, or production persistence.
+- The source Spreadsheet is read-only and has headers `姓名`, `電話`, `Email`, `購買堂數`.
+- The operations Spreadsheet has `accounts`, `courses`, and `registrations` sheets.
+- Students and the teacher use one phone/password login form.
+- Student passwords are MVP test values stored in `accounts`; teacher credentials are Script Properties.
+- Apps Script verifies every protected action and never trusts a frontend phone or role.
+- Only `attended` registrations reduce remaining lessons.
+- Tests use `test_{function_name}_when_{condition}_then_{expected_result}` with Arrange, Act, and Assert sections.
+- Production code follows focused files, clear names, short functions, and no speculative abstractions.
 
 ---
 
-### Task 1: Nuxt Project Foundation
+### Task 1: Apps Script Domain Rules
 
 **Files:**
-- Create: `package.json`
-- Create: `nuxt.config.ts`
-- Create: `vitest.config.ts`
-- Create: `tsconfig.json`
-- Create: `.gitignore`
-- Create: `.env.example`
-- Create: `app/app.vue`
-- Create: `app/assets/css/main.css`
-- Create: `data/db.json`
-- Test: `tests/unit/project-config.test.ts`
+- Create: `apps-script/Domain.js`
+- Create: `tests/unit/apps-script-domain.test.ts`
 
 **Interfaces:**
-- Produces: Nuxt application scripts `dev`, `build`, `preview`, `test`, and `typecheck`.
-- Produces: private runtime keys `googleSheetsApiKey`, `googleSpreadsheetId`, `googleSheetRange`, `teacherPassword`, `sessionSecret`, and `dataFile`.
+- Produces: `normalizePhone(phone)`
+- Produces: `parseStudentRows(rows)`
+- Produces: `parseAccountRows(rows)`
+- Produces: `parseCourseRows(rows)`
+- Produces: `parseRegistrationRows(rows)`
+- Produces: `calculateRemainingLessons(student, registrations)`
+- Produces: `createRegistration(course, phone, registrations, now)`
+- Produces: `updateRegistrationStatus(registration, status, now)`
 
-- [ ] **Step 1: Write the failing configuration test**
+- [ ] **Step 1: Write failing tests for phone normalization and each Sheet row parser.**
 
 ```ts
-test('test_runtime_config_when_loaded_then_private_keys_are_declared', async () => {
+test('test_parseStudentRows_when_headers_and_rows_are_valid_then_returns_students', () => {
   // Arrange
-  const source = await readFile('nuxt.config.ts', 'utf8')
+  const rows = [
+    ['姓名', '電話', 'Email', '購買堂數'],
+    ['王小明', '0912-345-678', 'student@example.com', 4],
+  ]
 
   // Act
-  const requiredKeys = ['googleSheetsApiKey', 'teacherPassword', 'sessionSecret']
+  const students = context.parseStudentRows(rows)
 
   // Assert
-  expect(requiredKeys.every(key => source.includes(key))).toBe(true)
+  expect(students).toEqual([{
+    name: '王小明',
+    phone: '0912345678',
+    email: 'student@example.com',
+    purchasedLessons: 4,
+  }])
 })
 ```
 
-- [ ] **Step 2: Run `npm test -- tests/unit/project-config.test.ts` and verify it fails because the project files do not exist.**
-- [ ] **Step 3: Create the minimal Nuxt configuration, scripts, empty application shell, stylesheet, environment example, and initial JSON data.**
-- [ ] **Step 4: Run the focused test and verify it passes.**
-- [ ] **Step 5: Run `npm install` and commit the project foundation.**
+- [ ] **Step 2: Run `npm test -- tests/unit/apps-script-domain.test.ts` and verify failure because `Domain.js` is missing.**
+- [ ] **Step 3: Implement the smallest normalization and parser functions that pass.**
+- [ ] **Step 4: Write and verify failing tests for remaining lessons, duplicate registration, closed courses, and allowed status transitions.**
+- [ ] **Step 5: Implement the minimum registration and attendance rules.**
+- [ ] **Step 6: Run the focused tests and all existing tests.**
 
-### Task 2: Domain Rules
-
-**Files:**
-- Create: `shared/types/domain.ts`
-- Create: `server/domain/students.ts`
-- Create: `server/domain/lessons.ts`
-- Create: `server/domain/registrations.ts`
-- Test: `tests/unit/students.test.ts`
-- Test: `tests/unit/lessons.test.ts`
-- Test: `tests/unit/registrations.test.ts`
-
-**Interfaces:**
-- Produces: `normalizePhone(phone: string): string`.
-- Produces: `parseStudentRows(rows: unknown[][]): Student[]`.
-- Produces: `calculateRemainingLessons(student: Student, registrations: Registration[]): number`.
-- Produces: `createRegistration(course: Course, phone: string, registrations: Registration[], now: string): Registration`.
-- Produces: `changeRegistrationStatus(registration: Registration, status: AttendanceResult, now: string): Registration`.
-
-- [ ] **Step 1: Write failing tests for phone normalization, required headers, duplicate phones, and purchased lesson parsing.**
-- [ ] **Step 2: Run the student tests and verify each failure is caused by missing domain behavior.**
-- [ ] **Step 3: Implement the smallest student parsing functions that pass.**
-- [ ] **Step 4: Write and verify failing tests for remaining lesson calculation.**
-- [ ] **Step 5: Implement remaining lesson calculation, counting only `attended` records for the selected phone.**
-- [ ] **Step 6: Write and verify failing tests for closed-course registration, duplicate registration, and allowed teacher status transitions.**
-- [ ] **Step 7: Implement registration creation and one-way status transitions.**
-- [ ] **Step 8: Run all domain tests and commit the domain rules.**
-
-### Task 3: Data Access, Authentication, and Server APIs
+### Task 2: Apps Script Authentication
 
 **Files:**
-- Create: `server/repositories/google-sheets-students.ts`
-- Create: `server/repositories/json-database.ts`
-- Create: `server/utils/session.ts`
-- Create: `server/utils/request-auth.ts`
-- Create: `server/services/dashboard.ts`
-- Create: `server/api/auth/student.post.ts`
-- Create: `server/api/auth/teacher.post.ts`
-- Create: `server/api/auth/logout.post.ts`
-- Create: `server/api/session.get.ts`
-- Create: `server/api/student/dashboard.get.ts`
-- Create: `server/api/student/courses/[courseId]/register.post.ts`
-- Create: `server/api/teacher/dashboard.get.ts`
-- Create: `server/api/teacher/registrations/[registrationId].patch.ts`
-- Test: `tests/unit/session.test.ts`
-- Test: `tests/unit/dashboard.test.ts`
-- Test: `tests/unit/json-database.test.ts`
+- Create: `apps-script/Auth.js`
+- Create: `tests/unit/apps-script-auth.test.ts`
 
 **Interfaces:**
-- Consumes: domain functions from Task 2.
-- Produces: signed `ski_session` cookie containing role and optional student phone.
-- Produces: `/api/student/dashboard` with student, remaining lessons, courses, and registrations.
-- Produces: `/api/teacher/dashboard` with students, courses, registrations, and remaining lessons.
+- Consumes: normalized phones and parsed accounts from Task 1.
+- Produces: `authenticateUser(phone, password, teacherCredentials, accounts)`
+- Produces: `createSessionToken(session, secret, now)`
+- Produces: `verifySessionToken(token, secret, now)`
+- Token payload: `{ phone, role, expiresAt }`
 
-- [ ] **Step 1: Write and verify failing tests for valid, tampered, and expired signed sessions.**
-- [ ] **Step 2: Implement HMAC-signed session tokens with Node crypto.**
-- [ ] **Step 3: Write and verify failing tests for JSON read, atomic write, and dashboard composition.**
-- [ ] **Step 4: Implement the JSON repository and dashboard service.**
-- [ ] **Step 5: Implement Google Sheets loading with configuration validation and row parsing.**
-- [ ] **Step 6: Implement authentication, dashboard, student registration, and teacher status API routes.**
-- [ ] **Step 7: Run all unit tests and commit the server behavior.**
+- [ ] **Step 1: Write failing tests for teacher login, student login, invalid credentials, valid tokens, tampered tokens, and expired tokens.**
+- [ ] **Step 2: Run the focused test and verify the missing behavior causes failure.**
+- [ ] **Step 3: Implement authentication and HMAC-signed seven-day tokens using Apps Script `Utilities`.**
+- [ ] **Step 4: Run the focused tests and all existing tests.**
 
-### Task 4: Student and Teacher Interface
+### Task 3: Google Sheet Gateway
 
 **Files:**
-- Create: `app/components/AppHeader.vue`
-- Create: `app/components/StatusBadge.vue`
-- Create: `app/components/CourseCard.vue`
-- Create: `app/pages/index.vue`
-- Create: `app/pages/student.vue`
-- Create: `app/pages/teacher.vue`
-- Modify: `app/assets/css/main.css`
+- Create: `apps-script/Sheets.js`
+- Create: `tests/unit/apps-script-sheets.test.ts`
 
 **Interfaces:**
-- Consumes: server API routes from Task 3.
-- Produces: phone login, teacher password login, student registration workflow, and teacher attendance workflow.
+- Produces: `getAppConfiguration()`
+- Produces: `loadStudents()`
+- Produces: `loadAccounts()`
+- Produces: `loadCourses()`
+- Produces: `loadRegistrations()`
+- Produces: `appendRegistration(registration)`
+- Produces: `replaceRegistration(registration)`
 
-- [ ] **Step 1: Build the login page with separate student and teacher forms and accessible error states.**
-- [ ] **Step 2: Build the student page with remaining lessons, available courses, registration action, and history.**
-- [ ] **Step 3: Build the teacher page grouped by course with attendance status controls.**
-- [ ] **Step 4: Add responsive operational styling, Lucide icons, loading states, empty states, and keyboard-visible focus.**
-- [ ] **Step 5: Run `npm run typecheck`, fix type errors, and commit the interface.**
+- [ ] **Step 1: Write failing tests with complete SpreadsheetApp and PropertiesService stubs for reading configured sheets.**
+- [ ] **Step 2: Verify failure because the gateway is missing.**
+- [ ] **Step 3: Implement configuration validation and read functions using the fixed sheet names and headers.**
+- [ ] **Step 4: Write failing tests that verify append and replacement write the exact row values.**
+- [ ] **Step 5: Implement the two write functions without modifying the source Spreadsheet.**
+- [ ] **Step 6: Run the focused tests and all existing tests.**
 
-### Task 5: Verification and Handoff
+### Task 4: Apps Script API Actions
 
 **Files:**
-- Create: `README.md`
+- Create: `apps-script/Actions.js`
+- Modify: `apps-script/Code.js`
+- Modify: `tests/unit/apps-script-web-app.test.ts`
+- Create: `tests/unit/apps-script-actions.test.ts`
 
 **Interfaces:**
-- Documents: Google Cloud setup, public test Sheet format, environment variables, local startup, test commands, and MVP limitations.
+- Consumes: domain, auth, and Sheet gateway functions.
+- Produces actions: `login`, `getStudentDashboard`, `registerCourse`, `getTeacherDashboard`, `updateAttendance`.
+- Produces API envelope: `{ ok: true, result }` or `{ ok: false, code }`.
 
-- [ ] **Step 1: Write setup instructions using only final configuration and usage information.**
-- [ ] **Step 2: Run `npm test` and verify zero failed tests.**
-- [ ] **Step 3: Run `npm run typecheck` and verify zero type errors.**
-- [ ] **Step 4: Run `npm run build` and verify a successful production build.**
-- [ ] **Step 5: Start the local development server and verify the login page loads.**
-- [ ] **Step 6: Review the complete diff against the design specification and coding standards.**
-- [ ] **Step 7: Commit the verified handoff documentation.**
+- [ ] **Step 1: Replace the old `NOT_IMPLEMENTED` test with failing request-dispatch tests.**
+- [ ] **Step 2: Write failing action tests for login, student ownership, teacher authorization, duplicate registration, and attendance updates.**
+- [ ] **Step 3: Verify all new tests fail for missing action behavior.**
+- [ ] **Step 4: Implement `doPost(event)` parsing, action dispatch, stable error codes, and JSON output.**
+- [ ] **Step 5: Implement dashboard composition and protected actions; wrap registration and attendance writes with `LockService`.**
+- [ ] **Step 6: Run focused tests and all Apps Script tests.**
+
+### Task 5: Frontend Authentication and API Integration
+
+**Files:**
+- Modify: `shared/types/domain.ts`
+- Modify: `app/utils/apps-script-api.ts`
+- Create: `app/utils/auth-session.ts`
+- Modify: `app/pages/index.vue`
+- Modify: `app/pages/student.vue`
+- Modify: `app/pages/teacher.vue`
+- Modify: `tests/unit/apps-script-api.test.ts`
+- Create: `tests/unit/auth-session.test.ts`
+
+**Interfaces:**
+- Produces: `login(phone, password)`
+- Produces: `getSession()`, `saveSession(session)`, `clearSession()`
+- Protected `callAppsScriptAction` requests include the stored token.
+
+- [ ] **Step 1: Write failing API tests for login payloads, protected token payloads, and stable error mapping.**
+- [ ] **Step 2: Write failing session tests for save, read, invalid storage, and clear behavior using an injected storage stub.**
+- [ ] **Step 3: Implement the minimal API and session utilities.**
+- [ ] **Step 4: Replace the connection-only homepage with the unified login form and role-based redirect.**
+- [ ] **Step 5: Connect student and teacher pages to stored sessions; redirect missing or wrong-role sessions to login.**
+- [ ] **Step 6: Keep failed API operations out of local dashboard state and clear sessions on logout.**
+- [ ] **Step 7: Run unit tests and `npm run typecheck`.**
+
+### Task 6: Configuration, Documentation, and Verification
+
+**Files:**
+- Modify: `README.md`
+- Modify: `.env.example`
+
+**Interfaces:**
+- Documents exact source and operations Sheet headers.
+- Documents the five Script Properties and deployment command.
+- Documents local startup and MVP plaintext-password limitation.
+
+- [ ] **Step 1: Update README with only the final Sheet, Script Properties, deployment, and startup steps.**
+- [ ] **Step 2: Run `npm test`.**
+- [ ] **Step 3: Run `npm run typecheck`.**
+- [ ] **Step 4: Run `npm run generate`.**
+- [ ] **Step 5: Run `npm run apps:status` and verify only Apps Script source files are tracked.**
+- [ ] **Step 6: Run the local frontend and verify login, student registration, and teacher attendance against configured test Sheets.**
+- [ ] **Step 7: Review the implementation diff against the design spec and coding standards from fixed point `dedc8d8`.**

@@ -1,19 +1,19 @@
-import type { Course, RegistrationStatus } from '../../shared/types/domain'
+import { REGISTRATION_STATUS, type Course, type RegistrationStatus } from '../../shared/types/domain'
 
 export type RegistrationStatusTone = 'info' | 'success' | 'warning' | 'muted'
 
 const statusLabels: Record<RegistrationStatus, string> = {
-  registered: '已報名',
-  attended: '已到課',
-  absent: '未到課',
-  cancelled: '已取消',
+  [REGISTRATION_STATUS.REGISTERED]: '已報名',
+  [REGISTRATION_STATUS.ATTENDED]: '已到課',
+  [REGISTRATION_STATUS.ABSENT]: '未到課',
+  [REGISTRATION_STATUS.CANCELLED]: '已取消',
 }
 
 const statusTones: Record<RegistrationStatus, RegistrationStatusTone> = {
-  registered: 'info',
-  attended: 'success',
-  absent: 'warning',
-  cancelled: 'muted',
+  [REGISTRATION_STATUS.REGISTERED]: 'info',
+  [REGISTRATION_STATUS.ATTENDED]: 'success',
+  [REGISTRATION_STATUS.ABSENT]: 'warning',
+  [REGISTRATION_STATUS.CANCELLED]: 'muted',
 }
 
 const weekdays = ['日', '一', '二', '三', '四', '五', '六']

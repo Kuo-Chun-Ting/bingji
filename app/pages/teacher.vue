@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { Ban, Check, CircleX, RefreshCw, UsersRound } from '@lucide/vue'
-import type { AttendanceResult, Registration, TeacherDashboard } from '../../shared/types/domain'
+import { REGISTRATION_STATUS, type AttendanceResult, type Registration, type TeacherDashboard } from '../../shared/types/domain'
 import { callAppsScriptAction } from '../utils/apps-script-api'
+import { clearSession, getSession, type AuthSession } from '../utils/auth-session'
 import { formatCourseSchedule } from '../utils/course-presentation'
 
 const config = useRuntimeConfig()
+const session = ref<AuthSession | null>(null)
 const dashboard = ref<TeacherDashboard | null>(null)
 const errorMessage = ref('')
 const isLoading = ref(true)
@@ -21,19 +23,34 @@ const courseGroups = computed(() => {
   }))
 })
 
-onMounted(() => {
-  void loadDashboard()
+onMounted(async () => {
+  const savedSession = getSession(window.localStorage)
+  if (!savedSession || savedSession.role !== 'teacher') {
+    await logout()
+    return
+  }
+
+  session.value = savedSession
+  await loadDashboard()
 })
 
 async function loadDashboard(): Promise<void> {
+  if (!session.value) {
+    return
+  }
+
   isLoading.value = true
   errorMessage.value = ''
   try {
     dashboard.value = await callAppsScriptAction<TeacherDashboard>(
       config.public.appsScriptUrl,
       'getTeacherDashboard',
+      { token: session.value.token },
     )
   } catch (error) {
+    if (await redirectWhenSessionIsInvalid(error)) {
+      return
+    }
     errorMessage.value = getErrorMessage(error, '無法載入教練資料，請稍後再試。')
   } finally {
     isLoading.value = false
@@ -41,28 +58,35 @@ async function loadDashboard(): Promise<void> {
 }
 
 async function updateAttendance(registrationId: string, status: AttendanceResult): Promise<void> {
+  if (!session.value) {
+    return
+  }
+
   updatingRegistrationId.value = registrationId
   errorMessage.value = ''
   try {
     const response = await callAppsScriptAction<{ registration: Registration }>(
       config.public.appsScriptUrl,
       'updateAttendance',
-      { registrationId, status },
+      { token: session.value.token, registrationId, status },
     )
     if (dashboard.value) {
       const remainingLessons = { ...dashboard.value.remainingLessons }
-      if (response.registration.status === 'attended') {
+      if (response.registration.status === REGISTRATION_STATUS.ATTENDED) {
         remainingLessons[response.registration.phone] = getRemainingLessons(response.registration.phone) - 1
       }
       dashboard.value = {
         ...dashboard.value,
-        registrations: dashboard.value.registrations.map(registration => {
+        registrations: dashboard.value.registrations.map((registration) => {
           return registration.id === registrationId ? response.registration : registration
         }),
         remainingLessons,
       }
     }
   } catch (error) {
+    if (await redirectWhenSessionIsInvalid(error)) {
+      return
+    }
     errorMessage.value = getErrorMessage(error, '無法更新到課狀態，請稍後再試。')
   } finally {
     updatingRegistrationId.value = null
@@ -78,22 +102,29 @@ function getRemainingLessons(phone: string): number {
 }
 
 async function logout(): Promise<void> {
+  clearSession(window.localStorage)
   await navigateTo('/')
 }
 
 function getErrorMessage(error: unknown, fallback: string): string {
-  if (error instanceof Error && error.message === 'NOT_IMPLEMENTED') {
-    return '此功能尚未實作。'
+  if (error instanceof Error && error.message === 'INVALID_STATUS_TRANSITION') {
+    return '這筆到課狀態已經完成，不能再次修改。'
   }
 
-  if (error && typeof error === 'object' && 'data' in error) {
-    const data = error.data
-    if (data && typeof data === 'object' && 'statusMessage' in data && typeof data.statusMessage === 'string') {
-      return data.statusMessage
-    }
+  if (error instanceof Error && error.message === 'DUPLICATE_PHONE') {
+    return 'Google Sheet 有重複電話，請先修正資料。'
   }
 
   return fallback
+}
+
+async function redirectWhenSessionIsInvalid(error: unknown): Promise<boolean> {
+  if (!(error instanceof Error) || (error.message !== 'INVALID_SESSION' && error.message !== 'FORBIDDEN')) {
+    return false
+  }
+
+  await logout()
+  return true
 }
 </script>
 
@@ -133,10 +164,10 @@ function getErrorMessage(error: unknown, fallback: string): string {
                   <td>{{ getRemainingLessons(registration.phone) }} 堂</td>
                   <td><StatusBadge :status="registration.status" /></td>
                   <td>
-                    <div v-if="registration.status === 'registered'" class="attendance-actions">
-                      <button class="attendance-button attendance-button--attended" type="button" aria-label="標記為已到課" title="標記為已到課" :disabled="updatingRegistrationId === registration.id" @click="updateAttendance(registration.id, 'attended')"><Check :size="18" aria-hidden="true" /></button>
-                      <button class="attendance-button attendance-button--absent" type="button" aria-label="標記為未到課" title="標記為未到課" :disabled="updatingRegistrationId === registration.id" @click="updateAttendance(registration.id, 'absent')"><CircleX :size="18" aria-hidden="true" /></button>
-                      <button class="attendance-button attendance-button--cancelled" type="button" aria-label="標記為取消" title="標記為取消" :disabled="updatingRegistrationId === registration.id" @click="updateAttendance(registration.id, 'cancelled')"><Ban :size="18" aria-hidden="true" /></button>
+                    <div v-if="registration.status === REGISTRATION_STATUS.REGISTERED" class="attendance-actions">
+                      <button class="attendance-button attendance-button--attended" type="button" aria-label="標記為已到課" title="標記為已到課" :disabled="updatingRegistrationId === registration.id" @click="updateAttendance(registration.id, REGISTRATION_STATUS.ATTENDED)"><Check :size="18" aria-hidden="true" /></button>
+                      <button class="attendance-button attendance-button--absent" type="button" aria-label="標記為未到課" title="標記為未到課" :disabled="updatingRegistrationId === registration.id" @click="updateAttendance(registration.id, REGISTRATION_STATUS.ABSENT)"><CircleX :size="18" aria-hidden="true" /></button>
+                      <button class="attendance-button attendance-button--cancelled" type="button" aria-label="標記為取消" title="標記為取消" :disabled="updatingRegistrationId === registration.id" @click="updateAttendance(registration.id, REGISTRATION_STATUS.CANCELLED)"><Ban :size="18" aria-hidden="true" /></button>
                     </div>
                     <span v-else class="readonly-status">已完成</span>
                   </td>

@@ -1,38 +1,60 @@
 <script setup lang="ts">
-import { CheckCircle2, CircleAlert, RefreshCw, Server } from '@lucide/vue'
+import { KeyRound, LogIn } from '@lucide/vue'
 
-import { getAppsScriptHealth } from '../utils/apps-script-api'
-
-type ConnectionStatus = 'checking' | 'connected' | 'disconnected'
+import type { LoginResult } from '../../shared/types/domain'
+import { callAppsScriptAction } from '../utils/apps-script-api'
+import { getSession, saveSession } from '../utils/auth-session'
 
 const config = useRuntimeConfig()
-const connectionStatus = ref<ConnectionStatus>('checking')
-const connectionMessage = ref('正在連線...')
+const phone = ref('')
+const password = ref('')
+const errorMessage = ref('')
+const isSubmitting = ref(false)
 
-onMounted(() => {
-  void checkConnection()
+onMounted(async () => {
+  const session = getSession(window.localStorage)
+  if (session) {
+    await navigateTo(session.role === 'teacher' ? '/teacher' : '/student')
+  }
 })
 
-async function checkConnection(): Promise<void> {
-  connectionStatus.value = 'checking'
-  connectionMessage.value = '正在連線...'
+async function login(): Promise<void> {
+  errorMessage.value = ''
+  if (!phone.value.trim() || !password.value) {
+    errorMessage.value = '請輸入電話與密碼。'
+    return
+  }
 
+  isSubmitting.value = true
   try {
-    await getAppsScriptHealth(config.public.appsScriptUrl)
-    connectionStatus.value = 'connected'
-    connectionMessage.value = 'Apps Script 已連線'
+    const session = await callAppsScriptAction<LoginResult>(
+      config.public.appsScriptUrl,
+      'login',
+      { phone: phone.value, password: password.value },
+    )
+    saveSession(session, window.localStorage)
+    await navigateTo(session.role === 'teacher' ? '/teacher' : '/student')
   } catch (error) {
-    connectionStatus.value = 'disconnected'
-    connectionMessage.value = getConnectionErrorMessage(error)
+    errorMessage.value = getLoginErrorMessage(error)
+  } finally {
+    isSubmitting.value = false
   }
 }
 
-function getConnectionErrorMessage(error: unknown): string {
-  if (error instanceof Error && error.message === 'Missing Apps Script endpoint') {
-    return '尚未設定 Apps Script URL'
+function getLoginErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message === 'INVALID_CREDENTIALS') {
+    return '電話或密碼錯誤。'
   }
 
-  return '無法連線 Apps Script'
+  if (error instanceof Error && error.message === 'MISSING_CONFIGURATION') {
+    return '系統尚未完成設定。'
+  }
+
+  if (error instanceof Error && error.message === 'DUPLICATE_PHONE') {
+    return 'Google Sheet 有重複電話，請聯絡管理者。'
+  }
+
+  return '目前無法登入，請稍後再試。'
 }
 </script>
 
@@ -45,33 +67,29 @@ function getConnectionErrorMessage(error: unknown): string {
         <h1>雪課簿</h1>
         <p>滑雪課程管理系統</p>
       </div>
-      <section class="auth-panel connection-panel" aria-labelledby="connection-title">
+      <section class="auth-panel login-panel" aria-labelledby="login-title">
         <div class="auth-panel__heading">
-          <span class="panel-icon panel-icon--blue" aria-hidden="true"><Server :size="20" /></span>
+          <span class="panel-icon panel-icon--blue" aria-hidden="true"><KeyRound :size="20" /></span>
           <div>
-            <h2 id="connection-title">系統連線</h2>
-            <p>Google Apps Script</p>
+            <h2 id="login-title">登入</h2>
+            <p>使用電話與密碼登入</p>
           </div>
         </div>
-        <div
-          class="connection-status"
-          :class="`connection-status--${connectionStatus}`"
-          aria-live="polite"
-        >
-          <RefreshCw v-if="connectionStatus === 'checking'" :size="20" aria-hidden="true" />
-          <CheckCircle2 v-else-if="connectionStatus === 'connected'" :size="20" aria-hidden="true" />
-          <CircleAlert v-else :size="20" aria-hidden="true" />
-          <span>{{ connectionMessage }}</span>
-        </div>
-        <button
-          v-if="connectionStatus === 'disconnected'"
-          class="button button--secondary button--full"
-          type="button"
-          @click="checkConnection"
-        >
-          <RefreshCw :size="18" aria-hidden="true" />
-          重新連線
-        </button>
+        <form @submit.prevent="login">
+          <div class="form-field">
+            <label for="phone">電話</label>
+            <input id="phone" v-model="phone" type="tel" autocomplete="username" inputmode="tel">
+          </div>
+          <div class="form-field">
+            <label for="password">密碼</label>
+            <input id="password" v-model="password" type="password" autocomplete="current-password">
+          </div>
+          <p class="form-error" aria-live="polite">{{ errorMessage }}</p>
+          <button class="button button--primary button--full" type="submit" :disabled="isSubmitting">
+            <LogIn :size="18" aria-hidden="true" />
+            {{ isSubmitting ? '登入中...' : '登入' }}
+          </button>
+        </form>
       </section>
     </div>
   </main>

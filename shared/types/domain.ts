@@ -5,6 +5,13 @@ export interface Student {
   purchasedLessons: number
 }
 
+export type UserRole = 'student' | 'teacher'
+
+export interface LoginResult {
+  token: string
+  role: UserRole
+}
+
 export interface Course {
   id: string
   date: string
@@ -13,8 +20,15 @@ export interface Course {
   isOpen: boolean
 }
 
-export type AttendanceResult = 'attended' | 'absent' | 'cancelled'
-export type RegistrationStatus = 'registered' | AttendanceResult
+export const REGISTRATION_STATUS = {
+  REGISTERED: 'registered',
+  ATTENDED: 'attended',
+  ABSENT: 'absent',
+  CANCELLED: 'cancelled',
+} as const
+
+export type RegistrationStatus = typeof REGISTRATION_STATUS[keyof typeof REGISTRATION_STATUS]
+export type AttendanceResult = Exclude<RegistrationStatus, typeof REGISTRATION_STATUS.REGISTERED>
 
 export interface Registration {
   id: string

@@ -85,7 +85,7 @@ test('test_callAppsScriptAction_when_endpoint_returns_success_then_returns_resul
   const result = await callAppsScriptAction<{ registrationId: string }>(
     'https://example.test/exec',
     'registerCourse',
-    { courseId: 'course-1' },
+    { token: 'signed-token', courseId: 'course-1' },
     mock_fetcher,
   )
 
@@ -98,8 +98,28 @@ test('test_callAppsScriptAction_when_endpoint_returns_success_then_returns_resul
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
         action: 'registerCourse',
-        payload: { courseId: 'course-1' },
+        payload: { token: 'signed-token', courseId: 'course-1' },
       }),
     },
   })
+})
+
+test('test_callAppsScriptAction_when_endpoint_returns_error_then_throws_error_code', async () => {
+  // Arrange
+  const stub_fetcher: AppsScriptFetcher = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({
+      ok: false,
+      code: 'INVALID_SESSION',
+    }),
+  })
+
+  // Act & Assert
+  await expect(callAppsScriptAction(
+    'https://example.test/exec',
+    'getStudentDashboard',
+    { token: 'expired-token' },
+    stub_fetcher,
+  )).rejects.toThrow('INVALID_SESSION')
 })

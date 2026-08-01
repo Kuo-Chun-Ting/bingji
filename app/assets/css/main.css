@@ -46,14 +46,9 @@ h1 { margin-bottom: 10px; font-size: 30px; line-height: 1.25; }
 h2 { margin-bottom: 5px; font-size: 20px; line-height: 1.35; }
 h3 { margin-bottom: 5px; font-size: 16px; line-height: 1.4; }
 .auth-intro > p:last-child, .dashboard-summary p:last-child, .auth-panel__heading p { color: #62706b; line-height: 1.6; }
-.auth-forms { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .auth-panel, .course-card, .course-panel { border: 1px solid #d8dfdc; border-radius: 8px; background: #fff; }
 .auth-panel { padding: 24px; }
-.connection-panel { width: min(100%, 480px); }
-.connection-status { display: flex; min-height: 56px; align-items: center; gap: 10px; padding: 14px; border-left: 4px solid; }
-.connection-status--checking { color: #40504a; border-color: #aab8b2; background: #edf1ef; }
-.connection-status--connected { color: #096654; border-color: #4c8f7e; background: #eaf4f0; }
-.connection-status--disconnected { color: #9a351a; border-color: #d76a22; background: #fff1e9; }
+.login-panel { width: min(100%, 480px); }
 .auth-panel__heading { display: flex; gap: 12px; min-height: 64px; margin-bottom: 24px; }
 .auth-panel__heading p { margin-bottom: 0; font-size: 14px; }
 .panel-icon { display: grid; width: 40px; height: 40px; flex: 0 0 40px; place-items: center; border-radius: 8px; }
@@ -62,6 +57,7 @@ h3 { margin-bottom: 5px; font-size: 16px; line-height: 1.4; }
 label { display: block; margin-bottom: 7px; font-size: 14px; font-weight: 700; }
 input { width: 100%; height: 42px; padding: 0 11px; color: #263330; border: 1px solid #aab8b2; border-radius: 6px; background: #fff; }
 input:focus { border-color: #216e88; }
+.form-field + .form-field { margin-top: 16px; }
 .form-error, .inline-error { color: #9a351a; font-size: 14px; line-height: 1.5; }
 .form-error { min-height: 21px; margin: 8px 0; }
 .button { display: inline-flex; min-height: 42px; align-items: center; justify-content: center; gap: 8px; padding: 0 14px; border: 1px solid transparent; border-radius: 6px; font-weight: 700; }
@@ -125,7 +121,6 @@ input:focus { border-color: #216e88; }
 @media (max-width: 760px) {
   .auth-content { grid-template-columns: 1fr; gap: 32px; padding-top: 36px; }
   .auth-intro { padding-top: 0; }
-  .auth-forms { grid-template-columns: 1fr; }
   .dashboard-summary { align-items: flex-start; flex-direction: column; padding: 32px 0 24px; }
   .lesson-counter { width: 100%; }
   .course-card { align-items: stretch; flex-direction: column; }

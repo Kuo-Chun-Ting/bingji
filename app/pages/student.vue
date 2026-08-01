@@ -2,9 +2,11 @@
 import { BookOpenCheck, RefreshCw } from '@lucide/vue'
 import type { Registration, StudentDashboard } from '../../shared/types/domain'
 import { callAppsScriptAction } from '../utils/apps-script-api'
+import { clearSession, getSession, type AuthSession } from '../utils/auth-session'
 import { formatCourseSchedule } from '../utils/course-presentation'
 
 const config = useRuntimeConfig()
+const session = ref<AuthSession | null>(null)
 const dashboard = ref<StudentDashboard | null>(null)
 const errorMessage = ref('')
 const isLoading = ref(true)
@@ -30,19 +32,34 @@ const registrationHistory = computed(() => {
   }))
 })
 
-onMounted(() => {
-  void loadDashboard()
+onMounted(async () => {
+  const savedSession = getSession(window.localStorage)
+  if (!savedSession || savedSession.role !== 'student') {
+    await logout()
+    return
+  }
+
+  session.value = savedSession
+  await loadDashboard()
 })
 
 async function loadDashboard(): Promise<void> {
+  if (!session.value) {
+    return
+  }
+
   isLoading.value = true
   errorMessage.value = ''
   try {
     dashboard.value = await callAppsScriptAction<StudentDashboard>(
       config.public.appsScriptUrl,
       'getStudentDashboard',
+      { token: session.value.token },
     )
   } catch (error) {
+    if (await redirectWhenSessionIsInvalid(error)) {
+      return
+    }
     errorMessage.value = getErrorMessage(error, '無法載入學員資料，請稍後再試。')
   } finally {
     isLoading.value = false
@@ -50,18 +67,25 @@ async function loadDashboard(): Promise<void> {
 }
 
 async function registerForCourse(courseId: string): Promise<void> {
+  if (!session.value) {
+    return
+  }
+
   registeringCourseId.value = courseId
   errorMessage.value = ''
   try {
     const response = await callAppsScriptAction<{ registration: Registration }>(
       config.public.appsScriptUrl,
       'registerCourse',
-      { courseId },
+      { token: session.value.token, courseId },
     )
     if (dashboard.value) {
       dashboard.value = { ...dashboard.value, registrations: [...dashboard.value.registrations, response.registration] }
     }
   } catch (error) {
+    if (await redirectWhenSessionIsInvalid(error)) {
+      return
+    }
     errorMessage.value = getErrorMessage(error, '無法完成報名，請稍後再試。')
   } finally {
     registeringCourseId.value = null
@@ -69,22 +93,33 @@ async function registerForCourse(courseId: string): Promise<void> {
 }
 
 async function logout(): Promise<void> {
+  clearSession(window.localStorage)
   await navigateTo('/')
 }
 
 function getErrorMessage(error: unknown, fallback: string): string {
-  if (error instanceof Error && error.message === 'NOT_IMPLEMENTED') {
-    return '此功能尚未實作。'
+  if (error instanceof Error && error.message === 'COURSE_CLOSED') {
+    return '這堂課目前未開放報名。'
   }
 
-  if (error && typeof error === 'object' && 'data' in error) {
-    const data = error.data
-    if (data && typeof data === 'object' && 'statusMessage' in data && typeof data.statusMessage === 'string') {
-      return data.statusMessage
-    }
+  if (error instanceof Error && error.message === 'ALREADY_REGISTERED') {
+    return '你已經報名這堂課。'
+  }
+
+  if (error instanceof Error && error.message === 'DUPLICATE_PHONE') {
+    return 'Google Sheet 有重複電話，請聯絡管理者。'
   }
 
   return fallback
+}
+
+async function redirectWhenSessionIsInvalid(error: unknown): Promise<boolean> {
+  if (!(error instanceof Error) || (error.message !== 'INVALID_SESSION' && error.message !== 'FORBIDDEN')) {
+    return false
+  }
+
+  await logout()
+  return true
 }
 </script>
 
