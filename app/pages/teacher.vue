@@ -130,7 +130,7 @@ async function redirectWhenSessionIsInvalid(error: unknown): Promise<boolean> {
 
 <template>
   <main class="dashboard-page">
-    <AppHeader role="teacher" show-logout @logout="logout" />
+    <AppHeader show-logout @logout="logout" />
     <section v-if="isLoading" class="page-state" aria-live="polite">正在載入課程名單...</section>
     <section v-else-if="errorMessage && !dashboard" class="page-state page-state--error" role="alert">
       <p>{{ errorMessage }}</p>
@@ -139,25 +139,23 @@ async function redirectWhenSessionIsInvalid(error: unknown): Promise<boolean> {
     <template v-else-if="dashboard">
       <section class="dashboard-summary" aria-labelledby="teacher-dashboard-title">
         <div>
-          <p class="eyebrow">教練管理</p>
-          <h1 id="teacher-dashboard-title">課程與到課紀錄</h1>
-          <p>依課程確認已報名學員的實際到課狀態。</p>
+          <h1 id="teacher-dashboard-title">課程</h1>
         </div>
         <div class="lesson-counter" aria-label="學員人數">
           <UsersRound :size="24" aria-hidden="true" />
-          <span><strong>{{ dashboard.students.length }}</strong> 位學員</span>
+          <span><strong>{{ dashboard.students.length }}</strong> 位</span>
         </div>
       </section>
       <p v-if="errorMessage" class="inline-error" role="alert">{{ errorMessage }}</p>
       <section v-if="courseGroups.length" class="course-management" aria-label="課程名單">
         <article v-for="group in courseGroups" :key="group.course.id" class="course-panel">
           <header class="course-panel__header">
-            <div><p class="eyebrow">課程名單</p><h2>{{ formatCourseSchedule(group.course) }}</h2></div>
-            <span class="course-availability" :class="{ 'course-availability--closed': !group.course.isOpen }">{{ group.course.isOpen ? '開放報名' : '暫停報名' }}</span>
+            <div><h2>{{ formatCourseSchedule(group.course) }}</h2></div>
+            <span class="course-availability" :class="{ 'course-availability--closed': !group.course.isOpen }">{{ group.course.isOpen ? '報名中' : '已關閉' }}</span>
           </header>
           <div v-if="group.registrations.length" class="roster-table-wrap">
             <table class="roster-table">
-              <thead><tr><th scope="col">學員</th><th scope="col">剩餘堂數</th><th scope="col">目前狀態</th><th scope="col">到課操作</th></tr></thead>
+              <thead><tr><th scope="col">學員</th><th scope="col">堂數</th><th scope="col">狀態</th><th scope="col">到課</th></tr></thead>
               <tbody>
                 <tr v-for="registration in group.registrations" :key="registration.id">
                   <td>{{ getStudentName(registration.phone) }}</td>
@@ -175,10 +173,10 @@ async function redirectWhenSessionIsInvalid(error: unknown): Promise<boolean> {
               </tbody>
             </table>
           </div>
-          <div v-else class="empty-state">目前尚無學員報名這堂課。</div>
+          <div v-else class="empty-state">尚無報名。</div>
         </article>
       </section>
-      <section v-else class="empty-state">目前尚未建立課程。</section>
+      <section v-else class="empty-state">尚無課程。</section>
     </template>
   </main>
 </template>

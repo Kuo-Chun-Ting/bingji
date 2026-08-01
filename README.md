@@ -1,4 +1,4 @@
-# Ski Registration System
+# 冰記
 
 Nuxt 靜態前端透過 Google Apps Script 讀寫 Google Sheet。
 

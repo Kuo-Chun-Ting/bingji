@@ -125,7 +125,7 @@ async function redirectWhenSessionIsInvalid(error: unknown): Promise<boolean> {
 
 <template>
   <main class="dashboard-page">
-    <AppHeader role="student" show-logout @logout="logout" />
+    <AppHeader show-logout @logout="logout" />
     <section v-if="isLoading" class="page-state" aria-live="polite">正在載入課程資料...</section>
     <section v-else-if="errorMessage && !dashboard" class="page-state page-state--error" role="alert">
       <p>{{ errorMessage }}</p>
@@ -134,20 +134,18 @@ async function redirectWhenSessionIsInvalid(error: unknown): Promise<boolean> {
     <template v-else-if="dashboard">
       <section class="dashboard-summary" aria-labelledby="student-name">
         <div>
-          <p class="eyebrow">學員課程</p>
-          <h1 id="student-name">{{ dashboard.student.name }}，你好</h1>
-          <p>管理你的課程報名與到課紀錄。</p>
+          <h1 id="student-name">{{ dashboard.student.name }}</h1>
         </div>
         <div class="lesson-counter" aria-label="剩餘堂數">
           <BookOpenCheck :size="24" aria-hidden="true" />
-          <span><strong>{{ dashboard.remainingLessons }}</strong> 堂可用</span>
+          <span><strong>{{ dashboard.remainingLessons }}</strong> 堂</span>
         </div>
       </section>
       <p v-if="errorMessage" class="inline-error" role="alert">{{ errorMessage }}</p>
       <section class="content-section" aria-labelledby="available-courses-title">
         <div class="section-heading">
-          <div><p class="eyebrow">課程報名</p><h2 id="available-courses-title">可報名課程</h2></div>
-          <span>{{ availableCourses.length }} 堂開放中</span>
+          <div><h2 id="available-courses-title">課程</h2></div>
+          <span>{{ availableCourses.length }} 堂</span>
         </div>
         <div v-if="availableCourses.length" class="course-list">
           <CourseCard
@@ -159,20 +157,20 @@ async function redirectWhenSessionIsInvalid(error: unknown): Promise<boolean> {
             @register="registerForCourse(course.id)"
           />
         </div>
-        <div v-else class="empty-state">目前沒有可報名的開放課程。</div>
+        <div v-else class="empty-state">沒有可報名的課程。</div>
       </section>
       <section class="content-section" aria-labelledby="registration-history-title">
-        <div class="section-heading"><div><p class="eyebrow">我的紀錄</p><h2 id="registration-history-title">報名歷史</h2></div></div>
+        <div class="section-heading"><div><h2 id="registration-history-title">紀錄</h2></div></div>
         <div v-if="registrationHistory.length" class="history-list">
           <article v-for="item in registrationHistory" :key="item.registration.id" class="history-row">
             <div>
               <h3>{{ item.course ? formatCourseSchedule(item.course) : `課程 ${item.registration.courseId}` }}</h3>
-              <p>報名時間 {{ new Date(item.registration.createdAt).toLocaleDateString('zh-TW') }}</p>
+              <p>{{ new Date(item.registration.createdAt).toLocaleDateString('zh-TW') }}</p>
             </div>
             <StatusBadge :status="item.registration.status" />
           </article>
         </div>
-        <div v-else class="empty-state">尚未有課程報名紀錄。</div>
+        <div v-else class="empty-state">尚無紀錄。</div>
       </section>
     </template>
   </main>

@@ -63,16 +63,13 @@ function getLoginErrorMessage(error: unknown): string {
     <AppHeader />
     <div class="auth-content">
       <div class="auth-intro">
-        <p class="eyebrow">SKI LESSONS</p>
-        <h1>雪課簿</h1>
-        <p>滑雪課程管理系統</p>
+        <h1>冰記</h1>
       </div>
       <section class="auth-panel login-panel" aria-labelledby="login-title">
         <div class="auth-panel__heading">
           <span class="panel-icon panel-icon--blue" aria-hidden="true"><KeyRound :size="20" /></span>
           <div>
             <h2 id="login-title">登入</h2>
-            <p>使用電話與密碼登入</p>
           </div>
         </div>
         <form @submit.prevent="login">

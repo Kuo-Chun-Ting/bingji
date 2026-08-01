@@ -2,7 +2,6 @@
 import { LogOut, Mountain } from '@lucide/vue'
 
 defineProps<{
-  role?: 'student' | 'teacher'
   showLogout?: boolean
 }>()
 
@@ -13,12 +12,10 @@ defineEmits<{
 
 <template>
   <header class="app-header">
-    <NuxtLink class="brand" to="/" aria-label="雪課簿首頁">
+    <NuxtLink class="brand" to="/" aria-label="冰記首頁">
       <span class="brand-mark" aria-hidden="true"><Mountain :size="22" /></span>
       <span>
-        <strong>雪課簿</strong>
-        <small v-if="role === 'student'">學員專區</small>
-        <small v-else-if="role === 'teacher'">教練管理</small>
+        <strong>冰記</strong>
       </span>
     </NuxtLink>
     <button
