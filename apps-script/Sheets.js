@@ -4,8 +4,10 @@ function getAppConfiguration() {
     'SOURCE_SPREADSHEET_ID',
     'OPERATIONS_SPREADSHEET_ID',
     'TEACHER_PHONE',
-    'TEACHER_PASSWORD',
     'SESSION_SECRET',
+    'LINE_CHANNEL_ID',
+    'LINE_CHANNEL_SECRET',
+    'LINE_REDIRECT_URI',
   ]
   requiredKeys.forEach(function (key) {
     if (!properties[key]) {
@@ -16,11 +18,16 @@ function getAppConfiguration() {
   return {
     sourceSpreadsheetId: properties.SOURCE_SPREADSHEET_ID,
     operationsSpreadsheetId: properties.OPERATIONS_SPREADSHEET_ID,
-    teacherCredentials: {
+    teacherIdentity: {
       phone: properties.TEACHER_PHONE,
-      password: properties.TEACHER_PASSWORD,
+      lineUserId: properties.TEACHER_LINE_USER_ID || '',
     },
     sessionSecret: properties.SESSION_SECRET,
+    lineLogin: {
+      channelId: properties.LINE_CHANNEL_ID,
+      channelSecret: properties.LINE_CHANNEL_SECRET,
+      redirectUri: properties.LINE_REDIRECT_URI,
+    },
   }
 }
 
@@ -49,6 +56,18 @@ function loadRegistrations() {
 function appendRegistration(registration) {
   var sheet = getOperationsSheet('registrations')
   writeRegistrationRow(sheet, sheet.getLastRow() + 1, registration)
+}
+
+function appendAccount(account) {
+  var sheet = getOperationsSheet('accounts')
+  sheet
+    .getRange(sheet.getLastRow() + 1, 1, 1, 2)
+    .setNumberFormat('@')
+    .setValues([[account.phone, account.lineUserId]])
+}
+
+function saveTeacherLineUserId(lineUserId) {
+  PropertiesService.getScriptProperties().setProperty('TEACHER_LINE_USER_ID', lineUserId)
 }
 
 function replaceRegistration(registration) {

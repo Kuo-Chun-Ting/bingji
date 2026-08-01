@@ -12,6 +12,8 @@ export interface LoginResult {
   role: UserRole
 }
 
+export type LineLoginResult = LoginResult | { bindingToken: string }
+
 export interface Course {
   id: string
   date: string

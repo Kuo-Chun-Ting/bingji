@@ -50,8 +50,10 @@ function getErrorCode(error) {
   var knownCodes = [
     'INVALID_REQUEST',
     'UNKNOWN_ACTION',
-    'INVALID_CREDENTIALS',
     'INVALID_SESSION',
+    'INVALID_BINDING_TOKEN',
+    'LINE_AUTH_FAILED',
+    'PHONE_ALREADY_LINKED',
     'FORBIDDEN',
     'STUDENT_NOT_FOUND',
     'COURSE_NOT_FOUND',
@@ -64,6 +66,7 @@ function getErrorCode(error) {
     'OPERATIONS_SHEET_NOT_FOUND',
     'INVALID_SHEET_HEADERS',
     'DUPLICATE_PHONE',
+    'DUPLICATE_LINE_USER_ID',
   ]
   return error && knownCodes.indexOf(error.message) !== -1
     ? error.message

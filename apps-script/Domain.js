@@ -23,13 +23,14 @@ function parseStudentRows(rows) {
 }
 
 function parseAccountRows(rows) {
-  var accounts = parseRows(rows, ['phone', 'password'], function (row) {
+  var accounts = parseRows(rows, ['phone', 'lineUserId'], function (row) {
     return {
       phone: normalizePhone(row[0]),
-      password: String(row[1]),
+      lineUserId: String(row[1]).trim(),
     }
   })
   assertUniquePhones(accounts)
+  assertUniqueLineUserIds(accounts)
   return accounts
 }
 
@@ -132,5 +133,18 @@ function assertUniquePhones(records) {
       throw new Error('DUPLICATE_PHONE')
     }
     seenPhones[record.phone] = true
+  })
+}
+
+function assertUniqueLineUserIds(accounts) {
+  var seenLineUserIds = {}
+  accounts.forEach(function (account) {
+    if (!account.lineUserId) {
+      return
+    }
+    if (seenLineUserIds[account.lineUserId]) {
+      throw new Error('DUPLICATE_LINE_USER_ID')
+    }
+    seenLineUserIds[account.lineUserId] = true
   })
 }

@@ -7,8 +7,9 @@ interface SheetContext {
   getAppConfiguration(): {
     sourceSpreadsheetId: string
     operationsSpreadsheetId: string
-    teacherCredentials: { phone: string, password: string }
+    teacherIdentity: { phone: string, lineUserId: string }
     sessionSecret: string
+    lineLogin: { channelId: string, channelSecret: string, redirectUri: string }
   }
   loadStudents(): unknown[]
   loadAccounts(): unknown[]
@@ -34,11 +35,16 @@ test('test_getAppConfiguration_when_properties_exist_then_returns_configuration'
   expect(configuration).toEqual({
     sourceSpreadsheetId: 'source-spreadsheet',
     operationsSpreadsheetId: 'operations-spreadsheet',
-    teacherCredentials: {
+    teacherIdentity: {
       phone: '0988222222',
-      password: 'teacher-password',
+      lineUserId: '',
     },
     sessionSecret: 'session-secret',
+    lineLogin: {
+      channelId: '2010930267',
+      channelSecret: 'channel-secret',
+      redirectUri: 'https://bingji-delta.vercel.app/auth/line-callback',
+    },
   })
 })
 
@@ -66,7 +72,7 @@ test('test_loadAccounts_when_sheet_has_rows_then_returns_accounts', async () => 
   const accounts = context.loadAccounts?.()
 
   // Assert
-  expect(accounts).toEqual([{ phone: '0912345678', password: 'student-password' }])
+  expect(accounts).toEqual([{ phone: '0912345678', lineUserId: 'student-line-user-id' }])
 })
 
 test('test_loadCourses_when_sheet_has_rows_then_returns_courses', async () => {
@@ -186,8 +192,8 @@ async function loadSheetsContext(): Promise<{ context: SheetContext, state: Shee
   ]
   const operationsRows: Record<string, unknown[][]> = {
     accounts: [
-      ['phone', 'password'],
-      ['0912-345-678', 'student-password'],
+      ['phone', 'lineUserId'],
+      ['0912-345-678', 'student-line-user-id'],
     ],
     courses: [
       ['id', 'date', 'startTime', 'endTime', 'isOpen'],
@@ -235,8 +241,10 @@ async function loadSheetsContext(): Promise<{ context: SheetContext, state: Shee
           SOURCE_SPREADSHEET_ID: 'source-spreadsheet',
           OPERATIONS_SPREADSHEET_ID: 'operations-spreadsheet',
           TEACHER_PHONE: '0988222222',
-          TEACHER_PASSWORD: 'teacher-password',
           SESSION_SECRET: 'session-secret',
+          LINE_CHANNEL_ID: '2010930267',
+          LINE_CHANNEL_SECRET: 'channel-secret',
+          LINE_REDIRECT_URI: 'https://bingji-delta.vercel.app/auth/line-callback',
         }),
       }),
     },

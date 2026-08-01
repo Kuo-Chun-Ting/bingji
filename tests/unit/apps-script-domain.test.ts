@@ -71,8 +71,8 @@ test('test_parseAccountRows_when_rows_are_valid_then_returns_accounts', async ()
   // Arrange
   const context = await loadDomainContext()
   const rows = [
-    ['phone', 'password'],
-    ['0912-345-678', 'test-password'],
+    ['phone', 'lineUserId'],
+    ['0912-345-678', 'line-user-id'],
   ]
 
   // Act
@@ -81,7 +81,7 @@ test('test_parseAccountRows_when_rows_are_valid_then_returns_accounts', async ()
   // Assert
   expect(accounts).toEqual([{
     phone: '0912345678',
-    password: 'test-password',
+    lineUserId: 'line-user-id',
   }])
 })
 
@@ -102,9 +102,9 @@ test('test_parseAccountRows_when_phone_is_duplicated_then_throws_duplicate_phone
   // Arrange
   const context = await loadDomainContext()
   const rows = [
-    ['phone', 'password'],
-    ['0912-345-678', 'first-password'],
-    ['0912345678', 'second-password'],
+    ['phone', 'lineUserId'],
+    ['0912-345-678', 'first-line-user-id'],
+    ['0912345678', 'second-line-user-id'],
   ]
 
   // Act & Assert

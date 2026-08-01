@@ -14,14 +14,14 @@ interface ActionState {
   lockReleases: number
 }
 
-test('test_executeAction_when_login_credentials_are_valid_then_returns_role_and_token', async () => {
+test('test_executeAction_when_line_account_is_linked_then_returns_role_and_token', async () => {
   // Arrange
   const { context } = await loadActionsContext()
 
   // Act
-  const result = context.executeAction?.('login', {
-    phone: '0912345678',
-    password: 'student-password',
+  const result = context.executeAction?.('loginWithLine', {
+    code: 'authorization-code',
+    nonce: 'nonce-value',
   })
 
   // Assert
@@ -265,10 +265,11 @@ async function loadActionsContext(): Promise<{ context: ActionsContext, state: A
       }),
     },
     getAppConfiguration: () => ({
-      teacherCredentials: { phone: '0988222222', password: 'teacher-password' },
+      teacherIdentity: { phone: '0988222222', lineUserId: 'teacher-line-user-id' },
       sessionSecret: 'session-secret',
+      lineLogin: {},
     }),
-    loadAccounts: () => [{ phone: '0912345678', password: 'student-password' }],
+    loadAccounts: () => [{ phone: '0912345678', lineUserId: 'student-line-user-id' }],
     loadStudents: () => students,
     loadCourses: () => courses,
     loadRegistrations: () => registrations,
@@ -278,10 +279,11 @@ async function loadActionsContext(): Promise<{ context: ActionsContext, state: A
     replaceRegistration: (registration: unknown) => {
       state.replacedRegistrations.push(registration)
     },
-    authenticateUser: (phone: string) => ({
-      phone,
-      role: phone === '0988222222' ? 'teacher' : 'student',
-    }),
+    UrlFetchApp: { fetch: () => ({}) },
+    exchangeLineAuthorizationCode: () => 'student-line-user-id',
+    resolveLineSession: (lineUserId: string) => lineUserId === 'student-line-user-id'
+      ? { phone: '0912345678', role: 'student' }
+      : null,
     createSessionToken: (session: { role: string }) => `signed-${session.role}-token`,
     verifySessionToken: (token: string) => {
       if (token === 'student-token') {

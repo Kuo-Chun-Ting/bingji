@@ -22,7 +22,7 @@ Apps Script 只讀取這份資料，不會修改。
 
 ```text
 accounts
-phone | password
+phone | lineUserId
 
 courses
 id | date | startTime | endTime | isOpen
@@ -31,7 +31,7 @@ registrations
 id | courseId | phone | status | createdAt | updatedAt
 ```
 
-- `accounts`：每位學員一列。電話需與原始報名資料相同。
+- `accounts`：LINE 身分綁定紀錄。第一列必須保留；其餘列由系統在首次登入時建立。
 - `courses`：直接在 Sheet 建立課程；`isOpen` 使用 `TRUE` 或 `FALSE`。
 - `registrations`：只建立欄位列，報名與到課紀錄由系統寫入。
 
@@ -43,8 +43,10 @@ id | courseId | phone | status | createdAt | updatedAt
 SOURCE_SPREADSHEET_ID=原始報名 Spreadsheet ID
 OPERATIONS_SPREADSHEET_ID=營運 Spreadsheet ID
 TEACHER_PHONE=管理者登入電話
-TEACHER_PASSWORD=管理者登入密碼
 SESSION_SECRET=自訂的長隨機字串
+LINE_CHANNEL_ID=LINE Login Channel ID
+LINE_CHANNEL_SECRET=LINE Login Channel secret
+LINE_REDIRECT_URI=https://你的前端網域/auth/line-callback
 ```
 
 部署必須設定為「以部署者身分執行」，存取權限設為「任何人」。
@@ -118,6 +120,8 @@ npm run apps:status
 
 ```env
 NUXT_PUBLIC_APPS_SCRIPT_URL=https://script.google.com/macros/s/DEPLOYMENT_ID/exec
+NUXT_PUBLIC_LINE_CHANNEL_ID=LINE Login Channel ID
+NUXT_PUBLIC_LINE_REDIRECT_URI=https://你的前端網域/auth/line-callback
 ```
 
 啟動前端：
@@ -126,4 +130,10 @@ NUXT_PUBLIC_APPS_SCRIPT_URL=https://script.google.com/macros/s/DEPLOYMENT_ID/exe
 npm run dev
 ```
 
-MVP 的學員測試密碼以明碼存放在 `accounts`。正式使用前應改用 LINE 登入或安全的密碼儲存方式。
+## LINE 登入
+
+LINE Developers Console 的 LINE Login Channel 必須設定與 `LINE_REDIRECT_URI` 相同的 Callback URL。
+
+首次 LINE 登入時，使用者輸入 Google Form 報名用的電話。系統確認電話存在後，將 LINE user ID 寫入營運 Spreadsheet 的 `accounts` 分頁。之後只需使用 LINE 登入。
+
+`LINE_CHANNEL_SECRET` 只能存在 Apps Script 的指令碼屬性，不能放入 `.env`、前端程式或 Git。

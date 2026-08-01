@@ -11,62 +11,9 @@ interface Session {
 }
 
 interface AuthContext {
-  authenticateUser(
-    phone: string,
-    password: string,
-    teacherCredentials: { phone: string, password: string },
-    accounts: Array<{ phone: string, password: string }>,
-  ): Session
   createSessionToken(session: Session, secret: string, now: number): string
   verifySessionToken(token: string, secret: string, now: number): Session
 }
-
-test('test_authenticateUser_when_teacher_credentials_match_then_returns_teacher_session', async () => {
-  // Arrange
-  const context = await loadAuthContext()
-
-  // Act
-  const session = context.authenticateUser?.(
-    '0988-222-222',
-    'teacher-password',
-    { phone: '0988222222', password: 'teacher-password' },
-    [],
-  )
-
-  // Assert
-  expect(session).toEqual({ phone: '0988222222', role: 'teacher' })
-})
-
-test('test_authenticateUser_when_student_credentials_match_then_returns_student_session', async () => {
-  // Arrange
-  const context = await loadAuthContext()
-  const accounts = [{ phone: '0912345678', password: 'student-password' }]
-
-  // Act
-  const session = context.authenticateUser?.(
-    '0912-345-678',
-    'student-password',
-    { phone: '0988222222', password: 'teacher-password' },
-    accounts,
-  )
-
-  // Assert
-  expect(session).toEqual({ phone: '0912345678', role: 'student' })
-})
-
-test('test_authenticateUser_when_password_is_invalid_then_throws_credentials_error', async () => {
-  // Arrange
-  const context = await loadAuthContext()
-  const accounts = [{ phone: '0912345678', password: 'student-password' }]
-
-  // Act & Assert
-  expect(() => context.authenticateUser?.(
-    '0912345678',
-    'wrong-password',
-    { phone: '0988222222', password: 'teacher-password' },
-    accounts,
-  )).toThrow('INVALID_CREDENTIALS')
-})
 
 test('test_verifySessionToken_when_token_is_valid_then_returns_session', async () => {
   // Arrange

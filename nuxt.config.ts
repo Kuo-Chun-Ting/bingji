@@ -5,6 +5,8 @@ export default defineNuxtConfig({
   runtimeConfig: {
     public: {
       appsScriptUrl: '',
+      lineChannelId: '',
+      lineRedirectUri: '',
     },
   },
 })

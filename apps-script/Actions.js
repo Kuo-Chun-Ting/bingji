@@ -1,6 +1,7 @@
 function executeAction(action, payload) {
   var handlers = {
-    login: loginAction,
+    loginWithLine: loginWithLineAction,
+    bindLineAccount: bindLineAccountAction,
     getStudentDashboard: getStudentDashboardAction,
     registerCourse: registerCourseAction,
     getTeacherDashboard: getTeacherDashboardAction,
@@ -12,16 +13,57 @@ function executeAction(action, payload) {
   return handlers[action](payload || {})
 }
 
-function loginAction(payload) {
+function loginWithLineAction(payload) {
   var configuration = getAppConfiguration()
-  var session = authenticateUser(
-    payload.phone,
-    payload.password,
-    configuration.teacherCredentials,
-    loadAccounts(),
+  var lineUserId = exchangeLineAuthorizationCode(
+    payload.code,
+    payload.nonce,
+    configuration.lineLogin,
+    UrlFetchApp.fetch,
   )
+  var session = resolveLineSession(lineUserId, configuration.teacherIdentity, loadAccounts())
+  if (!session) {
+    return { bindingToken: createBindingToken(lineUserId, configuration.sessionSecret, Date.now()) }
+  }
+  return createLoginResponse(session, configuration.sessionSecret)
+}
+
+function bindLineAccountAction(payload) {
+  var configuration = getAppConfiguration()
+  var identity = verifyBindingToken(payload.bindingToken, configuration.sessionSecret, Date.now())
+  var phone = normalizePhone(payload.phone)
+  return withScriptLock(function () {
+    var student = loadStudents().find(function (candidate) {
+      return candidate.phone === phone
+    })
+    if (!student) {
+      throw new Error('STUDENT_NOT_FOUND')
+    }
+
+    var accounts = loadAccounts()
+    var existingSession = resolveLineSession(identity.lineUserId, configuration.teacherIdentity, accounts)
+    if (existingSession) {
+      return createLoginResponse(existingSession, configuration.sessionSecret)
+    }
+    if (phone === normalizePhone(configuration.teacherIdentity.phone)) {
+      if (configuration.teacherIdentity.lineUserId) {
+        throw new Error('PHONE_ALREADY_LINKED')
+      }
+      saveTeacherLineUserId(identity.lineUserId)
+      return createLoginResponse({ phone: phone, role: 'teacher' }, configuration.sessionSecret)
+    }
+
+    if (accounts.some(function (account) { return account.phone === phone })) {
+      throw new Error('PHONE_ALREADY_LINKED')
+    }
+    appendAccount({ phone: phone, lineUserId: identity.lineUserId })
+    return createLoginResponse({ phone: phone, role: 'student' }, configuration.sessionSecret)
+  })
+}
+
+function createLoginResponse(session, secret) {
   return {
-    token: createSessionToken(session, configuration.sessionSecret, Date.now()),
+    token: createSessionToken(session, secret, Date.now()),
     role: session.role,
   }
 }
