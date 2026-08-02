@@ -44,7 +44,8 @@ function verifySessionToken(token, secret, now) {
 
     var payload = JSON.parse(decodeTokenPayload(parts[0]))
     var hasValidRole = payload.role === 'student' || payload.role === 'teacher'
-    if (!payload.phone || !hasValidRole || payload.expiresAt <= now) {
+    var hasRequiredIdentity = payload.role === 'teacher' || Boolean(payload.phone)
+    if (!hasRequiredIdentity || !hasValidRole || payload.expiresAt <= now) {
       throw new Error('INVALID_SESSION')
     }
 

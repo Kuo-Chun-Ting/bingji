@@ -76,6 +76,44 @@ test('test_doPost_when_action_throws_known_error_then_returns_error_code', async
   expect(output.mimeType).toBe('application/json')
 })
 
+test('test_doPost_when_teacher_credentials_are_invalid_then_returns_credentials_error', async () => {
+  // Arrange
+  const context = await loadAppsScriptContext()
+  const event = {
+    postData: {
+      contents: JSON.stringify({ action: 'invalidCredentials', payload: {} }),
+    },
+  }
+
+  // Act
+  const output = context.doPost(event)
+
+  // Assert
+  expect(JSON.parse(output.content)).toEqual({
+    ok: false,
+    code: 'INVALID_CREDENTIALS',
+  })
+})
+
+test('test_doPost_when_line_auth_throws_diagnostic_error_then_returns_diagnostic_code', async () => {
+  // Arrange
+  const context = await loadAppsScriptContext()
+  const event = {
+    postData: {
+      contents: JSON.stringify({ action: 'lineFailure', payload: {} }),
+    },
+  }
+
+  // Act
+  const output = context.doPost(event)
+
+  // Assert
+  expect(JSON.parse(output.content)).toEqual({
+    ok: false,
+    code: 'LINE_TOKEN_EXCHANGE_FAILED:INVALID_GRANT',
+  })
+})
+
 async function loadAppsScriptContext(): Promise<AppsScriptContext> {
   const source = await readFile('apps-script/Code.js', 'utf8')
   const context = {
@@ -93,6 +131,12 @@ async function loadAppsScriptContext(): Promise<AppsScriptContext> {
     executeAction: (action: string, payload: Record<string, unknown>) => {
       if (action === 'forbidden') {
         throw new Error('FORBIDDEN')
+      }
+      if (action === 'lineFailure') {
+        throw new Error('LINE_TOKEN_EXCHANGE_FAILED:INVALID_GRANT')
+      }
+      if (action === 'invalidCredentials') {
+        throw new Error('INVALID_CREDENTIALS')
       }
       return { action, payload }
     },

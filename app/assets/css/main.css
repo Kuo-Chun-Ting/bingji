@@ -56,6 +56,8 @@ input:focus { border-color: #6e6e73; box-shadow: 0 0 0 3px rgba(110, 110, 115, 0
 .form-field + .form-field { margin-top: 16px; }
 .form-error, .inline-error { color: #b42318; font-size: 14px; line-height: 1.5; }
 .form-error { min-height: 21px; margin: 8px 0; }
+.login-divider { display: flex; align-items: center; gap: 12px; margin: 24px 0; color: #6e6e73; font-size: 13px; }
+.login-divider::before, .login-divider::after { height: 1px; flex: 1; background: #e5e5ea; content: ""; }
 .button { display: inline-flex; min-height: 42px; align-items: center; justify-content: center; gap: 8px; padding: 0 15px; border: 1px solid transparent; border-radius: 6px; font-weight: 700; transition: background 160ms ease, border-color 160ms ease, transform 160ms ease; }
 .button--primary { color: #fff; background: #1d1d1f; }
 .button--primary:hover:not(:disabled) { background: #3a3a3c; transform: translateY(-1px); }

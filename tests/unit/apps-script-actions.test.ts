@@ -12,11 +12,12 @@ interface ActionState {
   replacedRegistrations: unknown[]
   lockWaits: number
   lockReleases: number
+  usedUrlFetchAppReceiver: boolean
 }
 
 test('test_executeAction_when_line_account_is_linked_then_returns_role_and_token', async () => {
   // Arrange
-  const { context } = await loadActionsContext()
+  const { context, state } = await loadActionsContext()
 
   // Act
   const result = context.executeAction?.('loginWithLine', {
@@ -29,6 +30,32 @@ test('test_executeAction_when_line_account_is_linked_then_returns_role_and_token
     token: 'signed-student-token',
     role: 'student',
   })
+  expect(state.usedUrlFetchAppReceiver).toBe(true)
+})
+
+test('test_executeAction_when_teacher_credentials_are_valid_then_returns_teacher_session', async () => {
+  // Arrange
+  const { context } = await loadActionsContext()
+
+  // Act
+  const result = context.executeAction?.('loginAsTeacher', {
+    username: 'coach',
+    password: 'shared-password',
+  })
+
+  // Assert
+  expect(result).toEqual({ token: 'signed-teacher-token', role: 'teacher' })
+})
+
+test('test_executeAction_when_teacher_credentials_are_invalid_then_throws_credentials_error', async () => {
+  // Arrange
+  const { context } = await loadActionsContext()
+
+  // Act & Assert
+  expect(() => context.executeAction?.('loginAsTeacher', {
+    username: 'coach',
+    password: 'wrong-password',
+  })).toThrow('INVALID_CREDENTIALS')
 })
 
 test('test_executeAction_when_student_dashboard_is_requested_then_returns_only_student_data', async () => {
@@ -192,6 +219,7 @@ async function loadActionsContext(): Promise<{ context: ActionsContext, state: A
     replacedRegistrations: [],
     lockWaits: 0,
     lockReleases: 0,
+    usedUrlFetchAppReceiver: false,
   }
   const students = [
     {
@@ -241,6 +269,12 @@ async function loadActionsContext(): Promise<{ context: ActionsContext, state: A
       updatedAt: '2026-08-01T00:00:00.000Z',
     },
   ]
+  const stub_urlFetchApp = {
+    fetch() {
+      state.usedUrlFetchAppReceiver = this === stub_urlFetchApp
+      return {}
+    },
+  }
   const context = {
     Utilities: {
       getUuid: (): string => 'registration-2',
@@ -265,7 +299,7 @@ async function loadActionsContext(): Promise<{ context: ActionsContext, state: A
       }),
     },
     getAppConfiguration: () => ({
-      teacherIdentity: { phone: '0988222222', lineUserId: 'teacher-line-user-id' },
+      teacherCredentials: { username: 'coach', password: 'shared-password' },
       sessionSecret: 'session-secret',
       lineLogin: {},
     }),
@@ -279,8 +313,16 @@ async function loadActionsContext(): Promise<{ context: ActionsContext, state: A
     replaceRegistration: (registration: unknown) => {
       state.replacedRegistrations.push(registration)
     },
-    UrlFetchApp: { fetch: () => ({}) },
-    exchangeLineAuthorizationCode: () => 'student-line-user-id',
+    UrlFetchApp: stub_urlFetchApp,
+    exchangeLineAuthorizationCode: (
+      _code: string,
+      _nonce: string,
+      _configuration: Record<string, unknown>,
+      fetcher: () => unknown,
+    ) => {
+      fetcher()
+      return 'student-line-user-id'
+    },
     resolveLineSession: (lineUserId: string) => lineUserId === 'student-line-user-id'
       ? { phone: '0912345678', role: 'student' }
       : null,

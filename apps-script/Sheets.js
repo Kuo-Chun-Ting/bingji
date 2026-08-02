@@ -3,7 +3,8 @@ function getAppConfiguration() {
   var requiredKeys = [
     'SOURCE_SPREADSHEET_ID',
     'OPERATIONS_SPREADSHEET_ID',
-    'TEACHER_PHONE',
+    'ADMIN_ACCOUNT',
+    'ADMIN_PASSWORD',
     'SESSION_SECRET',
     'LINE_CHANNEL_ID',
     'LINE_CHANNEL_SECRET',
@@ -18,9 +19,9 @@ function getAppConfiguration() {
   return {
     sourceSpreadsheetId: properties.SOURCE_SPREADSHEET_ID,
     operationsSpreadsheetId: properties.OPERATIONS_SPREADSHEET_ID,
-    teacherIdentity: {
-      phone: properties.TEACHER_PHONE,
-      lineUserId: properties.TEACHER_LINE_USER_ID || '',
+    teacherCredentials: {
+      username: properties.ADMIN_ACCOUNT,
+      password: properties.ADMIN_PASSWORD,
     },
     sessionSecret: properties.SESSION_SECRET,
     lineLogin: {
@@ -64,10 +65,6 @@ function appendAccount(account) {
     .getRange(sheet.getLastRow() + 1, 1, 1, 2)
     .setNumberFormat('@')
     .setValues([[account.phone, account.lineUserId]])
-}
-
-function saveTeacherLineUserId(lineUserId) {
-  PropertiesService.getScriptProperties().setProperty('TEACHER_LINE_USER_ID', lineUserId)
 }
 
 function replaceRegistration(registration) {

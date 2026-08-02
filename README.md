@@ -42,7 +42,8 @@ id | courseId | phone | status | createdAt | updatedAt
 ```text
 SOURCE_SPREADSHEET_ID=原始報名 Spreadsheet ID
 OPERATIONS_SPREADSHEET_ID=營運 Spreadsheet ID
-TEACHER_PHONE=管理者登入電話
+ADMIN_ACCOUNT=教練共用帳號
+ADMIN_PASSWORD=教練共用密碼
 SESSION_SECRET=自訂的長隨機字串
 LINE_CHANNEL_ID=LINE Login Channel ID
 LINE_CHANNEL_SECRET=LINE Login Channel secret
@@ -134,6 +135,8 @@ npm run dev
 
 LINE Developers Console 的 LINE Login Channel 必須設定與 `LINE_REDIRECT_URI` 相同的 Callback URL。
 
-首次 LINE 登入時，使用者輸入 Google Form 報名用的電話。系統確認電話存在後，將 LINE user ID 寫入營運 Spreadsheet 的 `accounts` 分頁。之後只需使用 LINE 登入。
+學員首次 LINE 登入時，輸入 Google Form 報名用的電話。系統確認電話存在後，將 LINE user ID 寫入營運 Spreadsheet 的 `accounts` 分頁。之後只需使用 LINE 登入。
 
-`LINE_CHANNEL_SECRET` 只能存在 Apps Script 的指令碼屬性，不能放入 `.env`、前端程式或 Git。
+教練使用首頁的共用帳號密碼登入。`ADMIN_ACCOUNT` 與 `ADMIN_PASSWORD` 只設定在 Apps Script 的指令碼屬性，不需要寫入 Sheet。
+
+`LINE_CHANNEL_SECRET` 與 `ADMIN_PASSWORD` 只能存在 Apps Script 的指令碼屬性，不能放入 `.env`、前端程式或 Git。

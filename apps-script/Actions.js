@@ -1,5 +1,6 @@
 function executeAction(action, payload) {
   var handlers = {
+    loginAsTeacher: loginAsTeacherAction,
     loginWithLine: loginWithLineAction,
     bindLineAccount: bindLineAccountAction,
     getStudentDashboard: getStudentDashboardAction,
@@ -19,13 +20,28 @@ function loginWithLineAction(payload) {
     payload.code,
     payload.nonce,
     configuration.lineLogin,
-    UrlFetchApp.fetch,
+    fetchLineApi,
   )
-  var session = resolveLineSession(lineUserId, configuration.teacherIdentity, loadAccounts())
+  var session = resolveLineSession(lineUserId, loadAccounts())
   if (!session) {
     return { bindingToken: createBindingToken(lineUserId, configuration.sessionSecret, Date.now()) }
   }
   return createLoginResponse(session, configuration.sessionSecret)
+}
+
+function loginAsTeacherAction(payload) {
+  var configuration = getAppConfiguration()
+  if (
+    String(payload.username || '') !== configuration.teacherCredentials.username
+    || String(payload.password || '') !== configuration.teacherCredentials.password
+  ) {
+    throw new Error('INVALID_CREDENTIALS')
+  }
+  return createLoginResponse({ role: 'teacher' }, configuration.sessionSecret)
+}
+
+function fetchLineApi(url, options) {
+  return UrlFetchApp.fetch(url, options)
 }
 
 function bindLineAccountAction(payload) {
@@ -41,18 +57,10 @@ function bindLineAccountAction(payload) {
     }
 
     var accounts = loadAccounts()
-    var existingSession = resolveLineSession(identity.lineUserId, configuration.teacherIdentity, accounts)
+    var existingSession = resolveLineSession(identity.lineUserId, accounts)
     if (existingSession) {
       return createLoginResponse(existingSession, configuration.sessionSecret)
     }
-    if (phone === normalizePhone(configuration.teacherIdentity.phone)) {
-      if (configuration.teacherIdentity.lineUserId) {
-        throw new Error('PHONE_ALREADY_LINKED')
-      }
-      saveTeacherLineUserId(identity.lineUserId)
-      return createLoginResponse({ phone: phone, role: 'teacher' }, configuration.sessionSecret)
-    }
-
     if (accounts.some(function (account) { return account.phone === phone })) {
       throw new Error('PHONE_ALREADY_LINKED')
     }

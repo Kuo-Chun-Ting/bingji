@@ -1,3 +1,8 @@
+var LineAuthFailure = Object.freeze({
+  TOKEN_EXCHANGE: 'LINE_TOKEN_EXCHANGE_FAILED',
+  ID_TOKEN_VERIFICATION: 'LINE_ID_TOKEN_VERIFICATION_FAILED',
+})
+
 function exchangeLineAuthorizationCode(code, nonce, configuration, fetcher) {
   var tokenResponse = requestLineJson(
     'https://api.line.me/oauth2/v2.1/token',
@@ -13,9 +18,10 @@ function exchangeLineAuthorizationCode(code, nonce, configuration, fetcher) {
       muteHttpExceptions: true,
     },
     fetcher,
+    LineAuthFailure.TOKEN_EXCHANGE,
   )
   if (!tokenResponse.id_token) {
-    throw new Error('LINE_AUTH_FAILED')
+    throw createLineAuthError(LineAuthFailure.TOKEN_EXCHANGE, 'MISSING_ID_TOKEN')
   }
 
   var identity = requestLineJson(
@@ -30,28 +36,51 @@ function exchangeLineAuthorizationCode(code, nonce, configuration, fetcher) {
       muteHttpExceptions: true,
     },
     fetcher,
+    LineAuthFailure.ID_TOKEN_VERIFICATION,
   )
   if (!identity.sub) {
-    throw new Error('LINE_AUTH_FAILED')
+    throw createLineAuthError(LineAuthFailure.ID_TOKEN_VERIFICATION, 'MISSING_SUB')
   }
   return String(identity.sub)
 }
 
-function resolveLineSession(lineUserId, teacherIdentity, accounts) {
-  if (teacherIdentity.lineUserId === lineUserId) {
-    return { phone: normalizePhone(teacherIdentity.phone), role: 'teacher' }
-  }
+function resolveLineSession(lineUserId, accounts) {
   var account = accounts.find(function (candidate) {
     return candidate.lineUserId === lineUserId
   })
   return account ? { phone: account.phone, role: 'student' } : null
 }
 
-function requestLineJson(url, options, fetcher) {
+function requestLineJson(url, options, fetcher, failureCode) {
+  var response
+  var payload
   try {
-    return JSON.parse(fetcher(url, options).getContentText())
+    response = fetcher(url, options)
   }
   catch (error) {
-    throw new Error('LINE_AUTH_FAILED')
+    throw createLineAuthError(failureCode, 'FETCH_FAILED')
   }
+  try {
+    payload = JSON.parse(response.getContentText())
+  }
+  catch (error) {
+    throw createLineAuthError(failureCode, 'INVALID_JSON')
+  }
+  if (payload.error) {
+    throw createLineAuthError(failureCode, payload.error)
+  }
+  return payload
+}
+
+function createLineAuthError(failureCode, detail) {
+  var errorCode = failureCode + ':' + normalizeLineErrorDetail(detail)
+  console.error(errorCode)
+  return new Error(errorCode)
+}
+
+function normalizeLineErrorDetail(detail) {
+  return String(detail || 'UNKNOWN')
+    .toUpperCase()
+    .replace(/[^A-Z0-9_]/g, '_')
+    .slice(0, 64)
 }

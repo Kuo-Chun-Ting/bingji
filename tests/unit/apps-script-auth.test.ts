@@ -5,7 +5,7 @@ import { runInNewContext } from 'node:vm'
 import { expect, test } from 'vitest'
 
 interface Session {
-  phone: string
+  phone?: string
   role: 'student' | 'teacher'
   expiresAt?: number
 }
@@ -32,6 +32,22 @@ test('test_verifySessionToken_when_token_is_valid_then_returns_session', async (
   expect(session).toEqual({
     phone: '0912345678',
     role: 'student',
+    expiresAt: now + 7 * 24 * 60 * 60 * 1_000,
+  })
+})
+
+test('test_verifySessionToken_when_teacher_has_no_phone_then_returns_teacher_session', async () => {
+  // Arrange
+  const context = await loadAuthContext()
+  const now = Date.UTC(2026, 7, 1)
+  const token = context.createSessionToken?.({ role: 'teacher' }, 'test-secret', now) ?? ''
+
+  // Act
+  const session = context.verifySessionToken?.(token, 'test-secret', now + 1_000)
+
+  // Assert
+  expect(session).toEqual({
+    role: 'teacher',
     expiresAt: now + 7 * 24 * 60 * 60 * 1_000,
   })
 })

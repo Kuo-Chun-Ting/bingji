@@ -52,6 +52,7 @@ function getErrorCode(error) {
     'UNKNOWN_ACTION',
     'INVALID_SESSION',
     'INVALID_BINDING_TOKEN',
+    'INVALID_CREDENTIALS',
     'LINE_AUTH_FAILED',
     'PHONE_ALREADY_LINKED',
     'FORBIDDEN',
@@ -68,7 +69,15 @@ function getErrorCode(error) {
     'DUPLICATE_PHONE',
     'DUPLICATE_LINE_USER_ID',
   ]
-  return error && knownCodes.indexOf(error.message) !== -1
-    ? error.message
-    : 'INTERNAL_ERROR'
+  if (!error || typeof error.message !== 'string') {
+    return 'INTERNAL_ERROR'
+  }
+  if (knownCodes.indexOf(error.message) !== -1 || isLineAuthDiagnosticCode(error.message)) {
+    return error.message
+  }
+  return 'INTERNAL_ERROR'
+}
+
+function isLineAuthDiagnosticCode(code) {
+  return /^LINE_(TOKEN_EXCHANGE|ID_TOKEN_VERIFICATION)_FAILED:[A-Z0-9_]+$/.test(code)
 }

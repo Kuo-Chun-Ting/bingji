@@ -15,9 +15,8 @@ interface LineLoginContext {
   verifyBindingToken(token: string, secret: string, now: number): { lineUserId: string }
   resolveLineSession(
     lineUserId: string,
-    teacherIdentity: { phone: string, lineUserId: string },
     accounts: Array<{ phone: string, lineUserId: string }>,
-  ): { phone: string, role: 'student' | 'teacher' } | null
+  ): { phone: string, role: 'student' } | null
 }
 
 test('test_exchangeLineAuthorizationCode_when_line_responses_are_valid_then_returns_line_user_id', async () => {
@@ -77,6 +76,90 @@ test('test_exchangeLineAuthorizationCode_when_line_responses_are_valid_then_retu
   ])
 })
 
+test('test_exchangeLineAuthorizationCode_when_token_exchange_fails_then_throws_diagnostic_code', async () => {
+  // Arrange
+  const context = await loadLineLoginContext()
+  const stub_fetcher = () => ({
+    getContentText: () => JSON.stringify({ error: 'invalid_grant' }),
+  })
+
+  // Act & Assert
+  expect(() => context.exchangeLineAuthorizationCode(
+    'authorization-code',
+    'nonce-value',
+    {
+      channelId: '2010930267',
+      channelSecret: 'channel-secret',
+      redirectUri: 'https://bingji-delta.vercel.app/auth/line-callback',
+    },
+    stub_fetcher,
+  )).toThrow('LINE_TOKEN_EXCHANGE_FAILED:INVALID_GRANT')
+})
+
+test('test_exchangeLineAuthorizationCode_when_line_request_throws_then_reports_fetch_failure', async () => {
+  // Arrange
+  const context = await loadLineLoginContext()
+  const stub_fetcher = () => {
+    throw new Error('Apps Script fetch failed')
+  }
+
+  // Act & Assert
+  expect(() => context.exchangeLineAuthorizationCode(
+    'authorization-code',
+    'nonce-value',
+    {
+      channelId: '2010930267',
+      channelSecret: 'channel-secret',
+      redirectUri: 'https://bingji-delta.vercel.app/auth/line-callback',
+    },
+    stub_fetcher,
+  )).toThrow('LINE_TOKEN_EXCHANGE_FAILED:FETCH_FAILED')
+})
+
+test('test_exchangeLineAuthorizationCode_when_line_response_is_not_json_then_reports_invalid_json', async () => {
+  // Arrange
+  const context = await loadLineLoginContext()
+  const stub_fetcher = () => ({ getContentText: () => '<html>error</html>' })
+
+  // Act & Assert
+  expect(() => context.exchangeLineAuthorizationCode(
+    'authorization-code',
+    'nonce-value',
+    {
+      channelId: '2010930267',
+      channelSecret: 'channel-secret',
+      redirectUri: 'https://bingji-delta.vercel.app/auth/line-callback',
+    },
+    stub_fetcher,
+  )).toThrow('LINE_TOKEN_EXCHANGE_FAILED:INVALID_JSON')
+})
+
+test('test_exchangeLineAuthorizationCode_when_id_token_verification_fails_then_throws_diagnostic_code', async () => {
+  // Arrange
+  const context = await loadLineLoginContext()
+  let requestCount = 0
+  const stub_fetcher = () => {
+    requestCount += 1
+    return {
+      getContentText: () => JSON.stringify(
+        requestCount === 1 ? { id_token: 'line-id-token' } : { error: 'invalid_request' },
+      ),
+    }
+  }
+
+  // Act & Assert
+  expect(() => context.exchangeLineAuthorizationCode(
+    'authorization-code',
+    'nonce-value',
+    {
+      channelId: '2010930267',
+      channelSecret: 'channel-secret',
+      redirectUri: 'https://bingji-delta.vercel.app/auth/line-callback',
+    },
+    stub_fetcher,
+  )).toThrow('LINE_ID_TOKEN_VERIFICATION_FAILED:INVALID_REQUEST')
+})
+
 test('test_resolveLineSession_when_student_account_is_linked_then_returns_student_session', async () => {
   // Arrange
   const context = await loadLineLoginContext()
@@ -84,7 +167,6 @@ test('test_resolveLineSession_when_student_account_is_linked_then_returns_studen
   // Act
   const session = context.resolveLineSession(
     'student-line-user-id',
-    { phone: '0988222222', lineUserId: 'teacher-line-user-id' },
     [{ phone: '0912345678', lineUserId: 'student-line-user-id' }],
   )
 
@@ -99,7 +181,6 @@ test('test_resolveLineSession_when_account_is_not_linked_then_returns_null', asy
   // Act
   const session = context.resolveLineSession(
     'unknown-line-user-id',
-    { phone: '0988222222', lineUserId: '' },
     [],
   )
 
@@ -134,6 +215,7 @@ async function loadLineLoginContext(): Promise<LineLoginContext> {
   }
 
   const context = {
+    console: { error() {} },
     Utilities: {
       base64EncodeWebSafe(value: string | number[]): string {
         return Buffer.from(typeof value === 'string' ? value : Uint8Array.from(value))

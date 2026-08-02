@@ -1,12 +1,17 @@
 <script setup lang="ts">
-import { LogIn } from '@lucide/vue'
+import { KeyRound, LogIn } from '@lucide/vue'
 
+import type { LoginResult } from '../../shared/types/domain'
+import { callAppsScriptAction } from '../utils/apps-script-api'
 import { getSession, saveSession } from '../utils/auth-session'
 import { createLineAuthorizationUrl } from '../utils/line-login'
 
 const config = useRuntimeConfig()
 const errorMessage = ref('')
 const isRedirecting = ref(false)
+const isTeacherLoggingIn = ref(false)
+const teacherUsername = ref('')
+const teacherPassword = ref('')
 
 onMounted(async () => {
   const session = getSession(window.localStorage)
@@ -34,6 +39,26 @@ function startLineLogin(): void {
     nonce,
   }))
 }
+
+async function loginAsTeacher(): Promise<void> {
+  errorMessage.value = ''
+  isTeacherLoggingIn.value = true
+  try {
+    const session = await callAppsScriptAction<LoginResult>(
+      config.public.appsScriptUrl,
+      'loginAsTeacher',
+      { username: teacherUsername.value, password: teacherPassword.value },
+    )
+    saveSession(session, window.localStorage)
+    await navigateTo('/teacher')
+  } catch (error) {
+    errorMessage.value = error instanceof Error && error.message === 'INVALID_CREDENTIALS'
+      ? '帳號或密碼錯誤。'
+      : '目前無法登入，請稍後再試。'
+  } finally {
+    isTeacherLoggingIn.value = false
+  }
+}
 </script>
 
 <template>
@@ -51,9 +76,24 @@ function startLineLogin(): void {
         </div>
         <p class="form-error" aria-live="polite">{{ errorMessage }}</p>
         <button class="button button--primary button--full" type="button" :disabled="isRedirecting" @click="startLineLogin">
-            <LogIn :size="18" aria-hidden="true" />
-            {{ isRedirecting ? '前往 LINE...' : '使用 LINE 登入' }}
+          <LogIn :size="18" aria-hidden="true" />
+          {{ isRedirecting ? '前往 LINE...' : '學員使用 LINE 登入' }}
         </button>
+        <div class="login-divider"><span>教練</span></div>
+        <form @submit.prevent="loginAsTeacher">
+          <div class="form-field">
+            <label for="teacher-username">帳號</label>
+            <input id="teacher-username" v-model="teacherUsername" type="text" autocomplete="username" required>
+          </div>
+          <div class="form-field">
+            <label for="teacher-password">密碼</label>
+            <input id="teacher-password" v-model="teacherPassword" type="password" autocomplete="current-password" required>
+          </div>
+          <button class="button button--secondary button--full" type="submit" :disabled="isTeacherLoggingIn">
+            <KeyRound :size="18" aria-hidden="true" />
+            {{ isTeacherLoggingIn ? '登入中...' : '教練登入' }}
+          </button>
+        </form>
       </section>
     </div>
   </main>

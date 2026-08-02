@@ -7,7 +7,7 @@ interface SheetContext {
   getAppConfiguration(): {
     sourceSpreadsheetId: string
     operationsSpreadsheetId: string
-    teacherIdentity: { phone: string, lineUserId: string }
+    teacherCredentials: { username: string, password: string }
     sessionSecret: string
     lineLogin: { channelId: string, channelSecret: string, redirectUri: string }
   }
@@ -35,9 +35,9 @@ test('test_getAppConfiguration_when_properties_exist_then_returns_configuration'
   expect(configuration).toEqual({
     sourceSpreadsheetId: 'source-spreadsheet',
     operationsSpreadsheetId: 'operations-spreadsheet',
-    teacherIdentity: {
-      phone: '0988222222',
-      lineUserId: '',
+    teacherCredentials: {
+      username: 'coach',
+      password: 'shared-password',
     },
     sessionSecret: 'session-secret',
     lineLogin: {
@@ -240,7 +240,8 @@ async function loadSheetsContext(): Promise<{ context: SheetContext, state: Shee
         getProperties: () => ({
           SOURCE_SPREADSHEET_ID: 'source-spreadsheet',
           OPERATIONS_SPREADSHEET_ID: 'operations-spreadsheet',
-          TEACHER_PHONE: '0988222222',
+          ADMIN_ACCOUNT: 'coach',
+          ADMIN_PASSWORD: 'shared-password',
           SESSION_SECRET: 'session-secret',
           LINE_CHANNEL_ID: '2010930267',
           LINE_CHANNEL_SECRET: 'channel-secret',
