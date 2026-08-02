@@ -45,9 +45,6 @@ function startLineLogin(): void {
         <span>{{ isRedirecting ? '登入中...' : 'LINE 登入' }}</span>
         <span aria-hidden="true"></span>
       </button>
-      <NuxtLink class="login-link" to="/admin">
-        教練登入
-      </NuxtLink>
     </section>
   </main>
 </template>

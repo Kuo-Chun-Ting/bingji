@@ -8,7 +8,7 @@ function getAppConfiguration() {
     'SESSION_SECRET',
     'LINE_CHANNEL_ID',
     'LINE_CHANNEL_SECRET',
-    'LINE_REDIRECT_URI',
+    'LINE_REDIRECT_URIS',
   ]
   requiredKeys.forEach(function (key) {
     if (!properties[key]) {
@@ -27,9 +27,20 @@ function getAppConfiguration() {
     lineLogin: {
       channelId: properties.LINE_CHANNEL_ID,
       channelSecret: properties.LINE_CHANNEL_SECRET,
-      redirectUri: properties.LINE_REDIRECT_URI,
+      allowedRedirectUris: parseRedirectUris(properties.LINE_REDIRECT_URIS),
     },
   }
+}
+
+function parseRedirectUris(value) {
+  return String(value || '')
+    .split(/[\n,]/)
+    .map(function (uri) {
+      return uri.trim()
+    })
+    .filter(function (uri) {
+      return uri
+    })
 }
 
 function loadStudents() {

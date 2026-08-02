@@ -13,6 +13,7 @@ interface ActionState {
   lockWaits: number
   lockReleases: number
   usedUrlFetchAppReceiver: boolean
+  usedRedirectUri: string
 }
 
 test('test_executeAction_when_line_account_is_linked_then_returns_role_and_token', async () => {
@@ -23,6 +24,7 @@ test('test_executeAction_when_line_account_is_linked_then_returns_role_and_token
   const result = context.executeAction?.('loginWithLine', {
     code: 'authorization-code',
     nonce: 'nonce-value',
+    redirectUri: 'http://localhost:3000/auth/line-callback',
   })
 
   // Assert
@@ -31,6 +33,7 @@ test('test_executeAction_when_line_account_is_linked_then_returns_role_and_token
     role: 'student',
   })
   expect(state.usedUrlFetchAppReceiver).toBe(true)
+  expect(state.usedRedirectUri).toBe('http://localhost:3000/auth/line-callback')
 })
 
 test('test_executeAction_when_teacher_credentials_are_valid_then_returns_teacher_session', async () => {
@@ -220,6 +223,7 @@ async function loadActionsContext(): Promise<{ context: ActionsContext, state: A
     lockWaits: 0,
     lockReleases: 0,
     usedUrlFetchAppReceiver: false,
+    usedRedirectUri: '',
   }
   const students = [
     {
@@ -317,9 +321,11 @@ async function loadActionsContext(): Promise<{ context: ActionsContext, state: A
     exchangeLineAuthorizationCode: (
       _code: string,
       _nonce: string,
+      redirectUri: string,
       _configuration: Record<string, unknown>,
       fetcher: () => unknown,
     ) => {
+      state.usedRedirectUri = redirectUri
       fetcher()
       return 'student-line-user-id'
     },

@@ -19,6 +19,7 @@ function loginWithLineAction(payload) {
   var lineUserId = exchangeLineAuthorizationCode(
     payload.code,
     payload.nonce,
+    payload.redirectUri,
     configuration.lineLogin,
     fetchLineApi,
   )

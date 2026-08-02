@@ -8,7 +8,8 @@ interface LineLoginContext {
   exchangeLineAuthorizationCode(
     code: string,
     nonce: string,
-    configuration: { channelId: string, channelSecret: string, redirectUri: string },
+    redirectUri: string,
+    configuration: { channelId: string, channelSecret: string, allowedRedirectUris: string[] },
     fetcher: (url: string, options: Record<string, unknown>) => { getContentText(): string },
   ): string
   createBindingToken(lineUserId: string, secret: string, now: number): string
@@ -36,10 +37,14 @@ test('test_exchangeLineAuthorizationCode_when_line_responses_are_valid_then_retu
   const lineUserId = context.exchangeLineAuthorizationCode(
     'authorization-code',
     'nonce-value',
+    'http://localhost:3000/auth/line-callback',
     {
       channelId: '2010930267',
       channelSecret: 'channel-secret',
-      redirectUri: 'https://bingji-delta.vercel.app/auth/line-callback',
+      allowedRedirectUris: [
+        'https://bingji-delta.vercel.app/auth/line-callback',
+        'http://localhost:3000/auth/line-callback',
+      ],
     },
     stub_fetcher,
   )
@@ -54,7 +59,7 @@ test('test_exchangeLineAuthorizationCode_when_line_responses_are_valid_then_retu
         payload: {
           grant_type: 'authorization_code',
           code: 'authorization-code',
-          redirect_uri: 'https://bingji-delta.vercel.app/auth/line-callback',
+          redirect_uri: 'http://localhost:3000/auth/line-callback',
           client_id: '2010930267',
           client_secret: 'channel-secret',
         },
@@ -76,6 +81,33 @@ test('test_exchangeLineAuthorizationCode_when_line_responses_are_valid_then_retu
   ])
 })
 
+test('test_exchangeLineAuthorizationCode_when_redirect_uri_is_not_allowed_then_throws_redirect_error', async () => {
+  // Arrange
+  const context = await loadLineLoginContext()
+  let requestCount = 0
+  const stub_fetcher = () => {
+    requestCount += 1
+    return { getContentText: () => '{}' }
+  }
+
+  // Act & Assert
+  expect(() => context.exchangeLineAuthorizationCode(
+    'authorization-code',
+    'nonce-value',
+    'https://attacker.example/auth/line-callback',
+    {
+      channelId: '2010930267',
+      channelSecret: 'channel-secret',
+      allowedRedirectUris: [
+        'https://bingji-delta.vercel.app/auth/line-callback',
+        'http://localhost:3000/auth/line-callback',
+      ],
+    },
+    stub_fetcher,
+  )).toThrow('INVALID_LINE_REDIRECT_URI')
+  expect(requestCount).toBe(0)
+})
+
 test('test_exchangeLineAuthorizationCode_when_token_exchange_fails_then_throws_diagnostic_code', async () => {
   // Arrange
   const context = await loadLineLoginContext()
@@ -87,10 +119,11 @@ test('test_exchangeLineAuthorizationCode_when_token_exchange_fails_then_throws_d
   expect(() => context.exchangeLineAuthorizationCode(
     'authorization-code',
     'nonce-value',
+    'https://bingji-delta.vercel.app/auth/line-callback',
     {
       channelId: '2010930267',
       channelSecret: 'channel-secret',
-      redirectUri: 'https://bingji-delta.vercel.app/auth/line-callback',
+      allowedRedirectUris: ['https://bingji-delta.vercel.app/auth/line-callback'],
     },
     stub_fetcher,
   )).toThrow('LINE_TOKEN_EXCHANGE_FAILED:INVALID_GRANT')
@@ -107,10 +140,11 @@ test('test_exchangeLineAuthorizationCode_when_line_request_throws_then_reports_f
   expect(() => context.exchangeLineAuthorizationCode(
     'authorization-code',
     'nonce-value',
+    'https://bingji-delta.vercel.app/auth/line-callback',
     {
       channelId: '2010930267',
       channelSecret: 'channel-secret',
-      redirectUri: 'https://bingji-delta.vercel.app/auth/line-callback',
+      allowedRedirectUris: ['https://bingji-delta.vercel.app/auth/line-callback'],
     },
     stub_fetcher,
   )).toThrow('LINE_TOKEN_EXCHANGE_FAILED:FETCH_FAILED')
@@ -125,10 +159,11 @@ test('test_exchangeLineAuthorizationCode_when_line_response_is_not_json_then_rep
   expect(() => context.exchangeLineAuthorizationCode(
     'authorization-code',
     'nonce-value',
+    'https://bingji-delta.vercel.app/auth/line-callback',
     {
       channelId: '2010930267',
       channelSecret: 'channel-secret',
-      redirectUri: 'https://bingji-delta.vercel.app/auth/line-callback',
+      allowedRedirectUris: ['https://bingji-delta.vercel.app/auth/line-callback'],
     },
     stub_fetcher,
   )).toThrow('LINE_TOKEN_EXCHANGE_FAILED:INVALID_JSON')
@@ -151,10 +186,11 @@ test('test_exchangeLineAuthorizationCode_when_id_token_verification_fails_then_t
   expect(() => context.exchangeLineAuthorizationCode(
     'authorization-code',
     'nonce-value',
+    'https://bingji-delta.vercel.app/auth/line-callback',
     {
       channelId: '2010930267',
       channelSecret: 'channel-secret',
-      redirectUri: 'https://bingji-delta.vercel.app/auth/line-callback',
+      allowedRedirectUris: ['https://bingji-delta.vercel.app/auth/line-callback'],
     },
     stub_fetcher,
   )).toThrow('LINE_ID_TOKEN_VERIFICATION_FAILED:INVALID_REQUEST')
