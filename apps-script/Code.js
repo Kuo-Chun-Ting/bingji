@@ -7,19 +7,45 @@ function doGet() {
 }
 
 function doPost(event) {
+  var diagnostics = createRequestDiagnostics()
   try {
     var request = parseRequest(event)
+    diagnostics.action = request.action
+    var result = executeAction(request.action, request.payload, diagnostics)
+    logRequestDiagnostics(diagnostics, 'success')
     return createJsonOutput({
       ok: true,
-      result: executeAction(request.action, request.payload),
+      result: result,
     })
   }
   catch (error) {
+    var errorCode = getErrorCode(error)
+    logRequestDiagnostics(diagnostics, 'error', errorCode)
     return createJsonOutput({
       ok: false,
-      code: getErrorCode(error),
+      code: errorCode,
     })
   }
+}
+
+function createRequestDiagnostics() {
+  return {
+    requestId: Utilities.getUuid(),
+    action: 'unknown',
+    startedAt: Date.now(),
+    phases: [],
+  }
+}
+
+function logRequestDiagnostics(diagnostics, status, errorCode) {
+  console.info('[PERF] ' + JSON.stringify({
+    requestId: diagnostics.requestId,
+    action: diagnostics.action,
+    status: status,
+    errorCode: errorCode || null,
+    durationMs: Date.now() - diagnostics.startedAt,
+    phases: diagnostics.phases,
+  }))
 }
 
 function createJsonOutput(payload) {

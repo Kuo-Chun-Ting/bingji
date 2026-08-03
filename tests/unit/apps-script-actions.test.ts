@@ -4,7 +4,11 @@ import { runInNewContext } from 'node:vm'
 import { expect, test } from 'vitest'
 
 interface ActionsContext {
-  executeAction(action: string, payload: Record<string, unknown>): unknown
+  executeAction(
+    action: string,
+    payload: Record<string, unknown>,
+    diagnostics?: { phases: Array<{ phase: string, durationMs: number }> },
+  ): unknown
 }
 
 interface ActionState {
@@ -18,12 +22,13 @@ interface ActionState {
 test('test_executeAction_when_line_account_is_linked_then_returns_role_and_token', async () => {
   // Arrange
   const { context, state } = await loadActionsContext()
+  const diagnostics = { phases: [] as Array<{ phase: string, durationMs: number }> }
 
   // Act
   const result = context.executeAction?.('loginWithLine', {
     code: 'authorization-code',
     nonce: 'nonce-value',
-  })
+  }, diagnostics)
 
   // Assert
   expect(result).toEqual({
@@ -31,6 +36,12 @@ test('test_executeAction_when_line_account_is_linked_then_returns_role_and_token
     role: 'student',
   })
   expect(state.usedUrlFetchAppReceiver).toBe(true)
+  expect(diagnostics.phases.map(({ phase }) => phase)).toEqual([
+    'getConfiguration',
+    'lineTokenExchange',
+    'lineIdTokenVerification',
+    'loadAccounts',
+  ])
 })
 
 test('test_executeAction_when_teacher_credentials_are_valid_then_returns_teacher_session', async () => {
@@ -318,9 +329,10 @@ async function loadActionsContext(): Promise<{ context: ActionsContext, state: A
       _code: string,
       _nonce: string,
       _configuration: Record<string, unknown>,
-      fetcher: () => unknown,
+      fetcher: (url: string, options: Record<string, unknown>) => unknown,
     ) => {
-      fetcher()
+      fetcher('https://api.line.me/oauth2/v2.1/token', {})
+      fetcher('https://api.line.me/oauth2/v2.1/verify', {})
       return 'student-line-user-id'
     },
     resolveLineSession: (lineUserId: string) => lineUserId === 'student-line-user-id'

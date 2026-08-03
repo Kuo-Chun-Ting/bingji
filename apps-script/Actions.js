@@ -1,4 +1,4 @@
-function executeAction(action, payload) {
+function executeAction(action, payload, diagnostics) {
   var handlers = {
     loginAsTeacher: loginAsTeacherAction,
     loginWithLine: loginWithLineAction,
@@ -11,18 +11,27 @@ function executeAction(action, payload) {
   if (!handlers[action]) {
     throw new Error('UNKNOWN_ACTION')
   }
-  return handlers[action](payload || {})
+  return handlers[action](payload || {}, diagnostics)
 }
 
-function loginWithLineAction(payload) {
-  var configuration = getAppConfiguration()
+function loginWithLineAction(payload, diagnostics) {
+  var configuration = measureActionPhase(diagnostics, 'getConfiguration', getAppConfiguration)
+  var measuredLineFetcher = function (url, options) {
+    var phase = url.indexOf('/token') !== -1
+      ? 'lineTokenExchange'
+      : 'lineIdTokenVerification'
+    return measureActionPhase(diagnostics, phase, function () {
+      return fetchLineApi(url, options)
+    })
+  }
   var lineUserId = exchangeLineAuthorizationCode(
     payload.code,
     payload.nonce,
     configuration.lineLogin,
-    fetchLineApi,
+    measuredLineFetcher,
   )
-  var session = resolveLineSession(lineUserId, loadAccounts())
+  var accounts = measureActionPhase(diagnostics, 'loadAccounts', loadAccounts)
+  var session = resolveLineSession(lineUserId, accounts)
   if (!session) {
     return { bindingToken: createBindingToken(lineUserId, configuration.sessionSecret, Date.now()) }
   }
@@ -44,19 +53,20 @@ function fetchLineApi(url, options) {
   return UrlFetchApp.fetch(url, options)
 }
 
-function bindLineAccountAction(payload) {
-  var configuration = getAppConfiguration()
+function bindLineAccountAction(payload, diagnostics) {
+  var configuration = measureActionPhase(diagnostics, 'getConfiguration', getAppConfiguration)
   var identity = verifyBindingToken(payload.bindingToken, configuration.sessionSecret, Date.now())
   var phone = normalizePhone(payload.phone)
   return withScriptLock(function () {
-    var student = loadStudents().find(function (candidate) {
+    var students = measureActionPhase(diagnostics, 'loadStudents', loadStudents)
+    var student = students.find(function (candidate) {
       return candidate.phone === phone
     })
     if (!student) {
       throw new Error('STUDENT_NOT_FOUND')
     }
 
-    var accounts = loadAccounts()
+    var accounts = measureActionPhase(diagnostics, 'loadAccounts', loadAccounts)
     var existingSession = resolveLineSession(identity.lineUserId, accounts)
     if (existingSession) {
       return createLoginResponse(existingSession, configuration.sessionSecret)
@@ -64,9 +74,11 @@ function bindLineAccountAction(payload) {
     if (accounts.some(function (account) { return account.phone === phone })) {
       throw new Error('PHONE_ALREADY_LINKED')
     }
-    appendAccount({ phone: phone, lineUserId: identity.lineUserId })
+    measureActionPhase(diagnostics, 'appendAccount', function () {
+      appendAccount({ phone: phone, lineUserId: identity.lineUserId })
+    })
     return createLoginResponse({ phone: phone, role: 'student' }, configuration.sessionSecret)
-  })
+  }, diagnostics)
 }
 
 function createLoginResponse(session, secret) {
@@ -76,10 +88,10 @@ function createLoginResponse(session, secret) {
   }
 }
 
-function getStudentDashboardAction(payload) {
+function getStudentDashboardAction(payload, diagnostics) {
   var session = requireRole(payload.token, 'student')
-  var students = loadStudents()
-  var registrations = loadRegistrations()
+  var students = measureActionPhase(diagnostics, 'loadStudents', loadStudents)
+  var registrations = measureActionPhase(diagnostics, 'loadRegistrations', loadRegistrations)
   var student = students.find(function (candidate) {
     return candidate.phone === session.phone
   })
@@ -90,17 +102,17 @@ function getStudentDashboardAction(payload) {
   return {
     student: student,
     remainingLessons: calculateRemainingLessons(student, registrations),
-    courses: loadCourses(),
+    courses: measureActionPhase(diagnostics, 'loadCourses', loadCourses),
     registrations: registrations.filter(function (registration) {
       return registration.phone === session.phone
     }),
   }
 }
 
-function registerCourseAction(payload) {
+function registerCourseAction(payload, diagnostics) {
   var session = requireRole(payload.token, 'student')
   return withScriptLock(function () {
-    var courses = loadCourses()
+    var courses = measureActionPhase(diagnostics, 'loadCourses', loadCourses)
     var course = courses.find(function (candidate) {
       return candidate.id === payload.courseId
     })
@@ -111,18 +123,20 @@ function registerCourseAction(payload) {
     var registration = createRegistration(
       course,
       session.phone,
-      loadRegistrations(),
+      measureActionPhase(diagnostics, 'loadRegistrations', loadRegistrations),
       new Date().toISOString(),
     )
-    appendRegistration(registration)
+    measureActionPhase(diagnostics, 'appendRegistration', function () {
+      appendRegistration(registration)
+    })
     return { registration: registration }
-  })
+  }, diagnostics)
 }
 
-function getTeacherDashboardAction(payload) {
+function getTeacherDashboardAction(payload, diagnostics) {
   requireRole(payload.token, 'teacher')
-  var students = loadStudents()
-  var registrations = loadRegistrations()
+  var students = measureActionPhase(diagnostics, 'loadStudents', loadStudents)
+  var registrations = measureActionPhase(diagnostics, 'loadRegistrations', loadRegistrations)
   var remainingLessons = {}
   students.forEach(function (student) {
     remainingLessons[student.phone] = calculateRemainingLessons(student, registrations)
@@ -130,16 +144,17 @@ function getTeacherDashboardAction(payload) {
 
   return {
     students: students,
-    courses: loadCourses(),
+    courses: measureActionPhase(diagnostics, 'loadCourses', loadCourses),
     registrations: registrations,
     remainingLessons: remainingLessons,
   }
 }
 
-function updateAttendanceAction(payload) {
+function updateAttendanceAction(payload, diagnostics) {
   requireRole(payload.token, 'teacher')
   return withScriptLock(function () {
-    var registration = loadRegistrations().find(function (candidate) {
+    var registrations = measureActionPhase(diagnostics, 'loadRegistrations', loadRegistrations)
+    var registration = registrations.find(function (candidate) {
       return candidate.id === payload.registrationId
     })
     if (!registration) {
@@ -151,9 +166,11 @@ function updateAttendanceAction(payload) {
       payload.status,
       new Date().toISOString(),
     )
-    replaceRegistration(updatedRegistration)
+    measureActionPhase(diagnostics, 'replaceRegistration', function () {
+      replaceRegistration(updatedRegistration)
+    })
     return { registration: updatedRegistration }
-  })
+  }, diagnostics)
 }
 
 function requireRole(token, role) {
@@ -165,13 +182,30 @@ function requireRole(token, role) {
   return session
 }
 
-function withScriptLock(operation) {
+function withScriptLock(operation, diagnostics) {
   var lock = LockService.getScriptLock()
-  lock.waitLock(30000)
+  measureActionPhase(diagnostics, 'scriptLockWait', function () {
+    lock.waitLock(30000)
+  })
   try {
     return operation()
   }
   finally {
     lock.releaseLock()
+  }
+}
+
+function measureActionPhase(diagnostics, phase, operation) {
+  var startedAt = Date.now()
+  try {
+    return operation()
+  }
+  finally {
+    if (diagnostics && Array.isArray(diagnostics.phases)) {
+      diagnostics.phases.push({
+        phase: phase,
+        durationMs: Date.now() - startedAt,
+      })
+    }
   }
 }
