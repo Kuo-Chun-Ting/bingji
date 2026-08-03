@@ -5,6 +5,17 @@ export interface LineAuthorizationRequest {
   nonce: string
 }
 
+export interface LineAuthorizationPreparation {
+  channelId: string
+  redirectUri: string
+}
+
+export interface LineLoginStorage {
+  setItem(key: string, value: string): void
+}
+
+export type CreateLineLoginValue = () => string
+
 type LineCallbackQuery = Record<string, string | Array<string | null> | null | undefined>
 
 const authorizationEndpoint = 'https://access.line.me/oauth2/v2.1/authorize'
@@ -19,6 +30,18 @@ export function createLineAuthorizationUrl(request: LineAuthorizationRequest): s
     nonce: request.nonce,
   })
   return `${authorizationEndpoint}?${parameters.toString()}`
+}
+
+export function prepareLineAuthorizationUrl(
+  request: LineAuthorizationPreparation,
+  storage: LineLoginStorage,
+  createValue: CreateLineLoginValue,
+): string {
+  const state = createValue()
+  const nonce = createValue()
+  storage.setItem('line_login_state', state)
+  storage.setItem('line_login_nonce', nonce)
+  return createLineAuthorizationUrl({ ...request, state, nonce })
 }
 
 export function validateLineCallback(query: LineCallbackQuery, expectedState: string): string {

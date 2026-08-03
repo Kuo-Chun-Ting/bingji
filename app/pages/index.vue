@@ -3,7 +3,7 @@ import type { LoginResult } from '../../shared/types/domain'
 
 import { callAppsScriptAction } from '../utils/apps-script-api'
 import { getSession, saveSession } from '../utils/auth-session'
-import { createLineAuthorizationUrl } from '../utils/line-login'
+import { prepareLineAuthorizationUrl } from '../utils/line-login'
 import {
   clearPendingLineBinding,
   completePendingLineBinding,
@@ -12,6 +12,7 @@ import {
 
 const config = useRuntimeConfig()
 const errorMessage = ref('')
+const lineLoginUrl = ref('')
 const isRedirecting = ref(false)
 const isCompletingRegistration = ref(false)
 
@@ -22,6 +23,7 @@ onMounted(async () => {
     await navigateTo(session.role === 'teacher' ? '/teacher' : '/student')
     return
   }
+  prepareLineLogin()
   await resumePendingLineBinding()
 })
 
@@ -65,25 +67,31 @@ function handlePendingBindingError(error: unknown): void {
   errorMessage.value = '無法完成登入，請重新使用 LINE 登入。'
 }
 
-function startLineLogin(): void {
-  clearPendingLineBinding(window.localStorage)
-  errorMessage.value = ''
+function prepareLineLogin(): void {
   if (!config.public.lineChannelId || !config.public.lineRedirectUri) {
     errorMessage.value = '系統尚未完成 LINE 登入設定。'
     return
   }
 
-  const state = crypto.randomUUID()
-  const nonce = crypto.randomUUID()
-  window.sessionStorage.setItem('line_login_state', state)
-  window.sessionStorage.setItem('line_login_nonce', nonce)
+  lineLoginUrl.value = prepareLineAuthorizationUrl(
+    {
+      channelId: config.public.lineChannelId,
+      redirectUri: config.public.lineRedirectUri,
+    },
+    window.sessionStorage,
+    () => crypto.randomUUID(),
+  )
+}
+
+function handleLineLoginClick(event: MouseEvent): void {
+  if (!lineLoginUrl.value || isRedirecting.value || isCompletingRegistration.value) {
+    event.preventDefault()
+    return
+  }
+
+  clearPendingLineBinding(window.localStorage)
+  errorMessage.value = ''
   isRedirecting.value = true
-  window.location.assign(createLineAuthorizationUrl({
-    channelId: config.public.lineChannelId,
-    redirectUri: config.public.lineRedirectUri,
-    state,
-    nonce,
-  }))
 }
 
 </script>
@@ -93,11 +101,16 @@ function startLineLogin(): void {
     <section class="login-shell" aria-labelledby="student-login-title">
       <h1 id="student-login-title" class="login-brand">冰記</h1>
       <p v-if="errorMessage" class="form-error" role="alert">{{ errorMessage }}</p>
-      <button class="line-login-button" type="button" :disabled="isRedirecting || isCompletingRegistration" @click="startLineLogin">
+      <a
+        class="line-login-button"
+        :href="lineLoginUrl || undefined"
+        :aria-disabled="isRedirecting || isCompletingRegistration || !lineLoginUrl"
+        @click="handleLineLoginClick"
+      >
         <img src="/images/line-login.png" alt="">
         <span>{{ isCompletingRegistration ? '完成登入中...' : isRedirecting ? '登入中...' : 'LINE 登入' }}</span>
         <span aria-hidden="true"></span>
-      </button>
+      </a>
     </section>
   </main>
 </template>

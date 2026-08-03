@@ -2,6 +2,7 @@ import { expect, test } from 'vitest'
 
 import {
   createLineAuthorizationUrl,
+  prepareLineAuthorizationUrl,
   validateLineCallback,
 } from '../../app/utils/line-login'
 
@@ -28,6 +29,32 @@ test('test_createLineAuthorizationUrl_when_configuration_is_valid_then_returns_l
     + '&scope=openid+profile'
     + '&nonce=nonce-value',
   )
+})
+
+test('test_prepareLineAuthorizationUrl_when_login_starts_then_saves_security_values_and_returns_url', () => {
+  // Arrange
+  const storedValues = new Map<string, string>()
+  const stub_storage = {
+    setItem: (key: string, value: string) => storedValues.set(key, value),
+  }
+  const values = ['state-value', 'nonce-value']
+  const stub_createValue = (): string => values.shift() ?? ''
+
+  // Act
+  const authorizationUrl = prepareLineAuthorizationUrl(
+    {
+      channelId: '2010930267',
+      redirectUri: 'https://bingji-delta.vercel.app/auth/line-callback',
+    },
+    stub_storage,
+    stub_createValue,
+  )
+
+  // Assert
+  expect(storedValues.get('line_login_state')).toBe('state-value')
+  expect(storedValues.get('line_login_nonce')).toBe('nonce-value')
+  expect(authorizationUrl).toContain('state=state-value')
+  expect(authorizationUrl).toContain('nonce=nonce-value')
 })
 
 test('test_validateLineCallback_when_state_matches_then_returns_authorization_code', () => {
