@@ -109,7 +109,6 @@ function handleLineLoginClick(event: MouseEvent): void {
       >
         <img src="/images/line-login.png" alt="">
         <span>{{ isCompletingRegistration ? '完成登入中...' : isRedirecting ? '登入中...' : 'LINE 登入' }}</span>
-        <span aria-hidden="true"></span>
       </a>
     </section>
   </main>

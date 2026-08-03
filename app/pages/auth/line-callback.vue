@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { LogIn } from '@lucide/vue'
-
 import type { LineLoginResult, LoginResult } from '../../../shared/types/domain'
 import { callAppsScriptAction } from '../../utils/apps-script-api'
 import { saveSession } from '../../utils/auth-session'
@@ -107,25 +105,23 @@ function getLoginErrorMessage(error: unknown): string {
 </script>
 
 <template>
-  <main class="auth-page">
-    <AppHeader />
-    <div class="auth-content">
-      <div class="auth-intro"><h1>冰記</h1></div>
-      <section class="auth-panel login-panel" aria-labelledby="line-login-title">
-        <div class="auth-panel__heading"><div><h2 id="line-login-title">LINE 登入</h2></div></div>
-        <p v-if="isLoading" class="page-copy">正在確認 LINE 身分...</p>
-        <form v-else-if="bindingToken" @submit.prevent="bindPhone">
-          <div class="form-field">
-            <label for="phone">報名電話</label>
-            <input id="phone" v-model="phone" type="tel" autocomplete="tel" inputmode="tel">
-          </div>
-          <p class="form-error" aria-live="polite">{{ errorMessage }}</p>
-          <button class="button button--primary button--full" type="submit" :disabled="isBinding">
-            <LogIn :size="18" aria-hidden="true" />{{ isBinding ? '綁定中...' : '完成綁定' }}
-          </button>
-        </form>
-        <p v-else class="form-error" role="alert">{{ errorMessage }}</p>
-      </section>
-    </div>
+  <main class="auth-page login-page">
+    <section class="login-shell" aria-label="學員登入">
+      <p v-if="isLoading" class="page-copy" role="status">正在確認身分...</p>
+      <form v-else-if="bindingToken" aria-label="確認報名電話" @submit.prevent="bindPhone">
+        <div class="form-field">
+          <label for="phone">報名電話</label>
+          <input id="phone" v-model="phone" type="tel" autocomplete="tel" inputmode="tel">
+        </div>
+        <p class="form-error" aria-live="polite">{{ errorMessage }}</p>
+        <button class="button button--primary button--full" type="submit" :disabled="isBinding">
+          {{ isBinding ? '確認中...' : '確認' }}
+        </button>
+      </form>
+      <div v-else>
+        <h1 class="login-title">無法登入</h1>
+        <p class="form-error" role="alert">{{ errorMessage }}</p>
+      </div>
+    </section>
   </main>
 </template>
