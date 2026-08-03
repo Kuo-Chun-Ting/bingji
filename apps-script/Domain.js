@@ -10,7 +10,8 @@ function normalizePhone(phone) {
 }
 
 function parseStudentRows(rows) {
-  var students = parseRows(rows, ['姓名', '電話', 'Email', '購買堂數'], function (row) {
+  var studentRows = removeGoogleFormTimestamp(rows)
+  return parseRows(studentRows, ['姓名', '電話', 'Email', '購買堂數'], function (row) {
     return {
       name: String(row[0]).trim(),
       phone: normalizePhone(row[1]),
@@ -18,8 +19,55 @@ function parseStudentRows(rows) {
       purchasedLessons: Number(row[3]),
     }
   })
-  assertUniquePhones(students)
-  return students
+}
+
+function isStudentSheetRows(rows) {
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return false
+  }
+  var headers = rows[0].map(String)
+  var manualHeaders = ['姓名', '電話', 'Email', '購買堂數']
+  var formHeaders = ['時間戳記', '姓名', '電話', 'Email', '購買堂數']
+  var englishFormHeaders = ['Timestamp', '姓名', '電話', 'Email', '購買堂數']
+  var headerKey = headers.join('|')
+  return headerKey === manualHeaders.join('|')
+    || headerKey === formHeaders.join('|')
+    || headerKey === englishFormHeaders.join('|')
+}
+
+function isGoogleFormStudentRows(rows) {
+  if (!isStudentSheetRows(rows)) {
+    return false
+  }
+  var firstHeader = String(rows[0][0])
+  return firstHeader === '時間戳記' || firstHeader === 'Timestamp'
+}
+
+function mergeStudentsByPhone(students) {
+  var phoneOrder = []
+  var studentsByPhone = {}
+  students.forEach(function (student) {
+    if (!studentsByPhone[student.phone]) {
+      phoneOrder.push(student.phone)
+    }
+    studentsByPhone[student.phone] = student
+  })
+  return phoneOrder.map(function (phone) {
+    return studentsByPhone[phone]
+  })
+}
+
+function removeGoogleFormTimestamp(rows) {
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return rows
+  }
+  var firstHeader = String(rows[0][0])
+  if (firstHeader !== '時間戳記' && firstHeader !== 'Timestamp') {
+    return rows
+  }
+  return rows.map(function (row) {
+    return row.slice(1)
+  })
 }
 
 function parseAccountRows(rows) {

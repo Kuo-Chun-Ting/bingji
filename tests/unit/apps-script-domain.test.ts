@@ -12,6 +12,8 @@ interface DomainContext {
   }
   normalizePhone(phone: string): string
   parseStudentRows(rows: unknown[][]): unknown[]
+  isStudentSheetRows(rows: unknown[][]): boolean
+  mergeStudentsByPhone(students: Array<{ phone: string }>): unknown[]
   parseAccountRows(rows: unknown[][]): unknown[]
   parseCourseRows(rows: unknown[][]): unknown[]
   parseRegistrationRows(rows: unknown[][]): unknown[]
@@ -67,6 +69,26 @@ test('test_parseStudentRows_when_headers_and_rows_are_valid_then_returns_student
   }])
 })
 
+test('test_parseStudentRows_when_rows_come_from_google_form_then_ignores_timestamp', async () => {
+  // Arrange
+  const context = await loadDomainContext()
+  const rows = [
+    ['時間戳記', '姓名', '電話', 'Email', '購買堂數'],
+    ['2026/08/03 上午 10:00:00', '王小明', '0912-345-678', 'student@example.com', '4'],
+  ]
+
+  // Act
+  const students = context.parseStudentRows?.(rows)
+
+  // Assert
+  expect(students).toEqual([{
+    name: '王小明',
+    phone: '0912345678',
+    email: 'student@example.com',
+    purchasedLessons: 4,
+  }])
+})
+
 test('test_parseAccountRows_when_rows_are_valid_then_returns_accounts', async () => {
   // Arrange
   const context = await loadDomainContext()
@@ -85,7 +107,7 @@ test('test_parseAccountRows_when_rows_are_valid_then_returns_accounts', async ()
   }])
 })
 
-test('test_parseStudentRows_when_phone_is_duplicated_then_throws_duplicate_phone_error', async () => {
+test('test_parseStudentRows_when_phone_is_duplicated_then_keeps_rows_for_source_merging', async () => {
   // Arrange
   const context = await loadDomainContext()
   const rows = [
@@ -94,8 +116,37 @@ test('test_parseStudentRows_when_phone_is_duplicated_then_throws_duplicate_phone
     ['王小華', '0912345678', 'another@example.com', '2'],
   ]
 
-  // Act & Assert
-  expect(() => context.parseStudentRows?.(rows)).toThrow('DUPLICATE_PHONE')
+  // Act
+  const students = context.parseStudentRows?.(rows)
+
+  // Assert
+  expect(students).toHaveLength(2)
+})
+
+test('test_isStudentSheetRows_when_headers_are_unrelated_then_returns_false', async () => {
+  // Arrange
+  const context = await loadDomainContext()
+
+  // Act
+  const isStudentSheet = context.isStudentSheetRows?.([['備註', '內容']])
+
+  // Assert
+  expect(isStudentSheet).toBe(false)
+})
+
+test('test_mergeStudentsByPhone_when_phone_repeats_then_uses_last_student', async () => {
+  // Arrange
+  const context = await loadDomainContext()
+  const students = [
+    { phone: '0912345678', name: '舊資料' },
+    { phone: '0912345678', name: '新資料' },
+  ]
+
+  // Act
+  const mergedStudents = context.mergeStudentsByPhone?.(students)
+
+  // Assert
+  expect(mergedStudents).toEqual([{ phone: '0912345678', name: '新資料' }])
 })
 
 test('test_parseAccountRows_when_phone_is_duplicated_then_throws_duplicate_phone_error', async () => {

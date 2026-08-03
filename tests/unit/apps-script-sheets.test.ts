@@ -56,10 +56,46 @@ test('test_loadStudents_when_source_sheet_has_rows_then_returns_students', async
   const students = context.loadStudents?.()
 
   // Assert
+  expect(students).toEqual([
+    {
+      name: '王小明',
+      phone: '0912345678',
+      email: 'student@example.com',
+      purchasedLessons: 4,
+    },
+    {
+      name: '陳小華',
+      phone: '0987654321',
+      email: 'another@example.com',
+      purchasedLessons: 2,
+    },
+  ])
+})
+
+test('test_loadStudents_when_form_has_duplicate_phone_and_unrelated_sheet_then_uses_manual_student', async () => {
+  // Arrange
+  const sourceSheetRows = [
+    [
+      ['姓名', '電話', 'Email', '購買堂數'],
+      ['王小明', '0912-345-678', 'manual@example.com', '4'],
+    ],
+    [
+      ['時間戳記', '姓名', '電話', 'Email', '購買堂數'],
+      ['2026/08/02 上午 10:00:00', '舊姓名', '0912-345-678', 'old@example.com', '1'],
+      ['2026/08/03 上午 10:00:00', '新姓名', '0912-345-678', 'new@example.com', '2'],
+    ],
+    [['備註', '內容'], ['測試', '不應讀取']],
+  ]
+  const { context } = await loadSheetsContext(sourceSheetRows)
+
+  // Act
+  const students = context.loadStudents?.()
+
+  // Assert
   expect(students).toEqual([{
     name: '王小明',
     phone: '0912345678',
-    email: 'student@example.com',
+    email: 'manual@example.com',
     purchasedLessons: 4,
   }])
 })
@@ -172,7 +208,7 @@ test('test_replaceRegistration_when_id_exists_then_replaces_matching_row', async
   }])
 })
 
-async function loadSheetsContext(): Promise<{ context: SheetContext, state: SheetState }> {
+async function loadSheetsContext(sourceSheetRows?: unknown[][][]): Promise<{ context: SheetContext, state: SheetState }> {
   const domainSource = await readFile('apps-script/Domain.js', 'utf8')
   let sheetsSource = ''
   try {
@@ -186,9 +222,13 @@ async function loadSheetsContext(): Promise<{ context: SheetContext, state: Shee
     writeOperations: [],
     replacedRanges: [],
   }
-  const sourceRows = [
+  const legacySourceRows = [
     ['姓名', '電話', 'Email', '購買堂數'],
     ['王小明', '0912-345-678', 'student@example.com', '4'],
+  ]
+  const formResponseRows = [
+    ['時間戳記', '姓名', '電話', 'Email', '購買堂數'],
+    ['2026/08/03 上午 10:00:00', '陳小華', '0987-654-321', 'another@example.com', '2'],
   ]
   const operationsRows: Record<string, unknown[][]> = {
     accounts: [
@@ -227,7 +267,7 @@ async function loadSheetsContext(): Promise<{ context: SheetContext, state: Shee
     }),
   })
 
-  const mock_sourceSheet = createMockSheet(sourceRows)
+  const mock_sourceSheets = (sourceSheetRows ?? [legacySourceRows, formResponseRows]).map(createMockSheet)
   const mock_operationsSheets = Object.fromEntries(
     Object.entries(operationsRows).map(([name, rows]) => [name, createMockSheet(rows)]),
   )
@@ -252,7 +292,7 @@ async function loadSheetsContext(): Promise<{ context: SheetContext, state: Shee
     SpreadsheetApp: {
       openById: (spreadsheetId: string) => {
         if (spreadsheetId === 'source-spreadsheet') {
-          return { getSheets: () => [mock_sourceSheet] }
+          return { getSheets: () => mock_sourceSheets }
         }
         return {
           getSheetByName: (name: string) => mock_operationsSheets[name],

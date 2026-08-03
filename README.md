@@ -8,13 +8,25 @@ Nuxt 靜態前端透過 Google Apps Script 讀寫 Google Sheet。
 
 ### 原始報名 Spreadsheet
 
-第一個分頁的第一列必須依序為：
+人工維護分頁的第一列必須依序為：
 
 ```text
 姓名 | 電話 | Email | 購買堂數
 ```
 
 Apps Script 只讀取這份資料，不會修改。
+
+### Google Form 報名
+
+Google Form 使用以下四個必填簡答欄位，名稱與順序必須一致：
+
+```text
+姓名 | 電話 | Email | 購買堂數
+```
+
+將表單回應連結到原始報名 Spreadsheet。Google 會建立包含 `時間戳記` 的表單回應分頁；Apps Script 只會合併欄位符合上述格式的分頁，其他分頁不受影響。表單不限制每人只能回覆一次，避免要求學員登入 Google 帳號；同一電話重複填表時採用最後一筆，若人工名單已有該電話則以人工名單為準。
+
+送出後確認訊息應包含正式學員登入網址，讓學員回到網站重新使用 LINE 登入。
 
 ### 營運 Spreadsheet
 
@@ -123,6 +135,7 @@ npm run apps:status
 NUXT_PUBLIC_APPS_SCRIPT_URL=https://script.google.com/macros/s/DEPLOYMENT_ID/exec
 NUXT_PUBLIC_LINE_CHANNEL_ID=LINE Login Channel ID
 NUXT_PUBLIC_LINE_REDIRECT_URI=https://你的前端網域/auth/line-callback
+NUXT_PUBLIC_REGISTRATION_FORM_URL=https://docs.google.com/forms/d/e/FORM_ID/viewform?usp=pp_url&entry.PHONE_FIELD_ID={phone}
 ```
 
 啟動前端：
@@ -142,6 +155,8 @@ https://你的前端網域/auth/line-callback
 所有環境的 `NUXT_PUBLIC_LINE_REDIRECT_URI` 都使用正式環境 URL，完整 LINE 登入流程只在正式環境驗證。
 
 學員首次 LINE 登入時，輸入 Google Form 報名用的電話。系統確認電話存在後，將 LINE user ID 寫入營運 Spreadsheet 的 `accounts` 分頁。之後只需使用 LINE 登入。
+
+找不到電話時，前端會導向 `NUXT_PUBLIC_REGISTRATION_FORM_URL`，並以 `{phone}` 預填剛才輸入的電話。Google Form 回應必須連結至原始報名 Spreadsheet；Apps Script 會合併讀取既有名單與表單回應分頁。
 
 教練直接從 `/admin` 使用共用帳號密碼登入。學員首頁不顯示教練入口。`ADMIN_ACCOUNT` 與 `ADMIN_PASSWORD` 只設定在 Apps Script 的指令碼屬性，不需要寫入 Sheet。
 

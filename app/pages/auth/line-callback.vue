@@ -5,6 +5,7 @@ import type { LineLoginResult, LoginResult } from '../../../shared/types/domain'
 import { callAppsScriptAction } from '../../utils/apps-script-api'
 import { saveSession } from '../../utils/auth-session'
 import { validateLineCallback } from '../../utils/line-login'
+import { getRegistrationFormRedirectUrl } from '../../utils/registration-form'
 
 const config = useRuntimeConfig()
 const route = useRoute()
@@ -50,10 +51,26 @@ async function bindPhone(): Promise<void> {
     )
     await completeLogin(result)
   } catch (error) {
+    if (redirectUnregisteredStudent(error)) {
+      return
+    }
     errorMessage.value = getLoginErrorMessage(error)
   } finally {
     isBinding.value = false
   }
+}
+
+function redirectUnregisteredStudent(error: unknown): boolean {
+  const registrationUrl = getRegistrationFormRedirectUrl(
+    error,
+    config.public.registrationFormUrl,
+    phone.value,
+  )
+  if (!registrationUrl) {
+    return false
+  }
+  window.location.assign(registrationUrl)
+  return true
 }
 
 async function handleLineLoginResult(result: LineLoginResult): Promise<void> {
@@ -76,9 +93,7 @@ function getLoginErrorMessage(error: unknown): string {
   if (error.message === 'INVALID_LINE_STATE') {
     return 'LINE 登入已失效，請重新登入。'
   }
-  if (error.message === 'STUDENT_NOT_FOUND') {
-    return '找不到這個電話的報名資料。'
-  }
+  if (error.message === 'STUDENT_NOT_FOUND') return '找不到報名資料。'
   if (error.message === 'PHONE_ALREADY_LINKED') {
     return '這個電話已綁定其他 LINE 帳號。'
   }
