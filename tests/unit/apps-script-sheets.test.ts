@@ -48,7 +48,7 @@ test('test_getAppConfiguration_when_properties_exist_then_returns_configuration'
   })
 })
 
-test('test_loadStudents_when_source_sheet_has_rows_then_returns_students', async () => {
+test('test_loadStudents_when_form_response_sheet_has_rows_then_returns_students', async () => {
   // Arrange
   const { context } = await loadSheetsContext()
 
@@ -56,28 +56,17 @@ test('test_loadStudents_when_source_sheet_has_rows_then_returns_students', async
   const students = context.loadStudents?.()
 
   // Assert
-  expect(students).toEqual([
-    {
-      name: '王小明',
-      phone: '0912345678',
-      email: 'student@example.com',
-      purchasedLessons: 4,
-    },
-    {
-      name: '陳小華',
-      phone: '0987654321',
-      email: 'another@example.com',
-      purchasedLessons: 2,
-    },
-  ])
+  expect(students).toEqual([{
+    name: '陳小華',
+    phone: '0987654321',
+    email: 'another@example.com',
+    purchasedLessons: 2,
+  }])
 })
 
-test('test_loadStudents_when_student_sheets_have_only_headers_then_returns_empty_list', async () => {
+test('test_loadStudents_when_form_response_sheet_has_only_headers_then_returns_empty_list', async () => {
   // Arrange
-  const sourceSheetRows = [
-    [['姓名', '電話', 'Email', '購買堂數']],
-    [['時間戳記', '姓名', '電話', 'Email', '購買堂數']],
-  ]
+  const sourceSheetRows = [[['時間戳記', '姓名', '電話', 'Email', '購買堂數']]]
   const { context } = await loadSheetsContext(sourceSheetRows)
 
   // Act
@@ -87,7 +76,7 @@ test('test_loadStudents_when_student_sheets_have_only_headers_then_returns_empty
   expect(students).toEqual([])
 })
 
-test('test_loadStudents_when_form_has_duplicate_phone_and_unrelated_sheet_then_uses_manual_student', async () => {
+test('test_loadStudents_when_manual_and_unrelated_sheets_exist_then_ignores_them', async () => {
   // Arrange
   const sourceSheetRows = [
     [
@@ -96,8 +85,7 @@ test('test_loadStudents_when_form_has_duplicate_phone_and_unrelated_sheet_then_u
     ],
     [
       ['時間戳記', '姓名', '電話', 'Email', '購買堂數'],
-      ['2026/08/02 上午 10:00:00', '舊姓名', '0912-345-678', 'old@example.com', '1'],
-      ['2026/08/03 上午 10:00:00', '新姓名', '0912-345-678', 'new@example.com', '2'],
+      ['2026/08/03 上午 10:00:00', '陳小華', '0987-654-321', 'another@example.com', '2'],
     ],
     [['備註', '內容'], ['測試', '不應讀取']],
   ]
@@ -108,10 +96,10 @@ test('test_loadStudents_when_form_has_duplicate_phone_and_unrelated_sheet_then_u
 
   // Assert
   expect(students).toEqual([{
-    name: '王小明',
-    phone: '0912345678',
-    email: 'manual@example.com',
-    purchasedLessons: 4,
+    name: '陳小華',
+    phone: '0987654321',
+    email: 'another@example.com',
+    purchasedLessons: 2,
   }])
 })
 
@@ -237,10 +225,6 @@ async function loadSheetsContext(sourceSheetRows?: unknown[][][]): Promise<{ con
     writeOperations: [],
     replacedRanges: [],
   }
-  const legacySourceRows = [
-    ['姓名', '電話', 'Email', '購買堂數'],
-    ['王小明', '0912-345-678', 'student@example.com', '4'],
-  ]
   const formResponseRows = [
     ['時間戳記', '姓名', '電話', 'Email', '購買堂數'],
     ['2026/08/03 上午 10:00:00', '陳小華', '0987-654-321', 'another@example.com', '2'],
@@ -282,7 +266,7 @@ async function loadSheetsContext(sourceSheetRows?: unknown[][][]): Promise<{ con
     }),
   })
 
-  const mock_sourceSheets = (sourceSheetRows ?? [legacySourceRows, formResponseRows]).map(createMockSheet)
+  const mock_sourceSheets = (sourceSheetRows ?? [formResponseRows]).map(createMockSheet)
   const mock_operationsSheets = Object.fromEntries(
     Object.entries(operationsRows).map(([name, rows]) => [name, createMockSheet(rows)]),
   )

@@ -13,7 +13,6 @@ interface DomainContext {
   normalizePhone(phone: string): string
   parseStudentRows(rows: unknown[][]): unknown[]
   isStudentSheetRows(rows: unknown[][]): boolean
-  mergeStudentsByPhone(students: Array<{ phone: string }>): unknown[]
   parseAccountRows(rows: unknown[][]): unknown[]
   parseCourseRows(rows: unknown[][]): unknown[]
   parseRegistrationRows(rows: unknown[][]): unknown[]
@@ -107,7 +106,7 @@ test('test_parseAccountRows_when_rows_are_valid_then_returns_accounts', async ()
   }])
 })
 
-test('test_parseStudentRows_when_phone_is_duplicated_then_keeps_rows_for_source_merging', async () => {
+test('test_parseStudentRows_when_phone_is_duplicated_then_keeps_all_rows', async () => {
   // Arrange
   const context = await loadDomainContext()
   const rows = [
@@ -132,21 +131,6 @@ test('test_isStudentSheetRows_when_headers_are_unrelated_then_returns_false', as
 
   // Assert
   expect(isStudentSheet).toBe(false)
-})
-
-test('test_mergeStudentsByPhone_when_phone_repeats_then_uses_last_student', async () => {
-  // Arrange
-  const context = await loadDomainContext()
-  const students = [
-    { phone: '0912345678', name: '舊資料' },
-    { phone: '0912345678', name: '新資料' },
-  ]
-
-  // Act
-  const mergedStudents = context.mergeStudentsByPhone?.(students)
-
-  // Assert
-  expect(mergedStudents).toEqual([{ phone: '0912345678', name: '新資料' }])
 })
 
 test('test_parseAccountRows_when_phone_is_duplicated_then_throws_duplicate_phone_error', async () => {

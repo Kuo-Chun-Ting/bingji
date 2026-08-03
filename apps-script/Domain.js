@@ -26,35 +26,11 @@ function isStudentSheetRows(rows) {
     return false
   }
   var headers = rows[0].map(String)
-  var manualHeaders = ['姓名', '電話', 'Email', '購買堂數']
   var formHeaders = ['時間戳記', '姓名', '電話', 'Email', '購買堂數']
   var englishFormHeaders = ['Timestamp', '姓名', '電話', 'Email', '購買堂數']
   var headerKey = headers.join('|')
-  return headerKey === manualHeaders.join('|')
-    || headerKey === formHeaders.join('|')
+  return headerKey === formHeaders.join('|')
     || headerKey === englishFormHeaders.join('|')
-}
-
-function isGoogleFormStudentRows(rows) {
-  if (!isStudentSheetRows(rows)) {
-    return false
-  }
-  var firstHeader = String(rows[0][0])
-  return firstHeader === '時間戳記' || firstHeader === 'Timestamp'
-}
-
-function mergeStudentsByPhone(students) {
-  var phoneOrder = []
-  var studentsByPhone = {}
-  students.forEach(function (student) {
-    if (!studentsByPhone[student.phone]) {
-      phoneOrder.push(student.phone)
-    }
-    studentsByPhone[student.phone] = student
-  })
-  return phoneOrder.map(function (phone) {
-    return studentsByPhone[phone]
-  })
 }
 
 function removeGoogleFormTimestamp(rows) {

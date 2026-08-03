@@ -35,37 +35,19 @@ function getAppConfiguration() {
 function loadStudents() {
   var configuration = getAppConfiguration()
   var spreadsheet = SpreadsheetApp.openById(configuration.sourceSpreadsheetId)
-  var sheets = spreadsheet.getSheets()
-  if (sheets.length === 0) {
-    throw new Error('SOURCE_SHEET_NOT_FOUND')
-  }
-  var manualStudents = []
-  var formStudents = []
-  var hasStudentSheet = false
-  sheets.forEach(function (sheet) {
+  var formResponseRows = null
+  spreadsheet.getSheets().some(function (sheet) {
     var rows = sheet.getDataRange().getDisplayValues()
     if (!isStudentSheetRows(rows)) {
-      return
+      return false
     }
-    hasStudentSheet = true
-    if (isGoogleFormStudentRows(rows)) {
-      formStudents = formStudents.concat(parseStudentRows(rows))
-      return
-    }
-    manualStudents = manualStudents.concat(parseStudentRows(rows))
+    formResponseRows = rows
+    return true
   })
-  if (!hasStudentSheet) {
+  if (!formResponseRows) {
     throw new Error('SOURCE_SHEET_NOT_FOUND')
   }
-  var mergedManualStudents = mergeStudentsByPhone(manualStudents)
-  var manualPhones = {}
-  mergedManualStudents.forEach(function (student) {
-    manualPhones[student.phone] = true
-  })
-  var newFormStudents = mergeStudentsByPhone(formStudents).filter(function (student) {
-    return !manualPhones[student.phone]
-  })
-  return mergedManualStudents.concat(newFormStudents)
+  return parseStudentRows(formResponseRows)
 }
 
 function loadAccounts() {
