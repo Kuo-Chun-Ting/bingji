@@ -47,7 +47,7 @@ ADMIN_PASSWORD=教練共用密碼
 SESSION_SECRET=自訂的長隨機字串
 LINE_CHANNEL_ID=LINE Login Channel ID
 LINE_CHANNEL_SECRET=LINE Login Channel secret
-LINE_REDIRECT_URIS=https://你的前端網域/auth/line-callback,http://localhost:3000/auth/line-callback
+LINE_REDIRECT_URI=https://你的前端網域/auth/line-callback
 ```
 
 部署必須設定為「以部署者身分執行」，存取權限設為「任何人」。
@@ -122,7 +122,7 @@ npm run apps:status
 ```env
 NUXT_PUBLIC_APPS_SCRIPT_URL=https://script.google.com/macros/s/DEPLOYMENT_ID/exec
 NUXT_PUBLIC_LINE_CHANNEL_ID=LINE Login Channel ID
-NUXT_PUBLIC_LINE_REDIRECT_URI=http://localhost:3000/auth/line-callback
+NUXT_PUBLIC_LINE_REDIRECT_URI=https://你的前端網域/auth/line-callback
 ```
 
 啟動前端：
@@ -133,14 +133,13 @@ npm run dev
 
 ## LINE 登入
 
-LINE Developers Console 的 LINE Login Channel 必須加入正式環境與本機兩個 Callback URL：
+LINE Developers Console 的 LINE Login Channel 必須設定正式環境的 Callback URL：
 
 ```text
 https://你的前端網域/auth/line-callback
-http://localhost:3000/auth/line-callback
 ```
 
-Vercel 的 `NUXT_PUBLIC_LINE_REDIRECT_URI` 使用正式環境 URL；本機 `.env` 使用 localhost URL。Apps Script 的 `LINE_REDIRECT_URIS` 以逗號分隔，必須同時包含兩個 URL。
+所有環境的 `NUXT_PUBLIC_LINE_REDIRECT_URI` 都使用正式環境 URL，完整 LINE 登入流程只在正式環境驗證。
 
 學員首次 LINE 登入時，輸入 Google Form 報名用的電話。系統確認電話存在後，將 LINE user ID 寫入營運 Spreadsheet 的 `accounts` 分頁。之後只需使用 LINE 登入。
 

@@ -3,11 +3,7 @@ var LineAuthFailure = Object.freeze({
   ID_TOKEN_VERIFICATION: 'LINE_ID_TOKEN_VERIFICATION_FAILED',
 })
 
-function exchangeLineAuthorizationCode(code, nonce, redirectUri, configuration, fetcher) {
-  var verifiedRedirectUri = requireAllowedLineRedirectUri(
-    redirectUri,
-    configuration.allowedRedirectUris,
-  )
+function exchangeLineAuthorizationCode(code, nonce, configuration, fetcher) {
   var tokenResponse = requestLineJson(
     'https://api.line.me/oauth2/v2.1/token',
     {
@@ -15,7 +11,7 @@ function exchangeLineAuthorizationCode(code, nonce, redirectUri, configuration, 
       payload: {
         grant_type: 'authorization_code',
         code: code,
-        redirect_uri: verifiedRedirectUri,
+        redirect_uri: configuration.redirectUri,
         client_id: configuration.channelId,
         client_secret: configuration.channelSecret,
       },
@@ -46,14 +42,6 @@ function exchangeLineAuthorizationCode(code, nonce, redirectUri, configuration, 
     throw createLineAuthError(LineAuthFailure.ID_TOKEN_VERIFICATION, 'MISSING_SUB')
   }
   return String(identity.sub)
-}
-
-function requireAllowedLineRedirectUri(redirectUri, allowedRedirectUris) {
-  var normalizedRedirectUri = String(redirectUri || '').trim()
-  if (allowedRedirectUris.indexOf(normalizedRedirectUri) === -1) {
-    throw new Error('INVALID_LINE_REDIRECT_URI')
-  }
-  return normalizedRedirectUri
 }
 
 function resolveLineSession(lineUserId, accounts) {

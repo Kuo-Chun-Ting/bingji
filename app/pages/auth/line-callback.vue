@@ -24,7 +24,7 @@ onMounted(async () => {
     const result = await callAppsScriptAction<LineLoginResult>(
       config.public.appsScriptUrl,
       'loginWithLine',
-      { code, nonce, redirectUri: config.public.lineRedirectUri },
+      { code, nonce },
     )
     await handleLineLoginResult(result)
   } catch (error) {

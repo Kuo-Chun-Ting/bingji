@@ -9,7 +9,7 @@ interface SheetContext {
     operationsSpreadsheetId: string
     teacherCredentials: { username: string, password: string }
     sessionSecret: string
-    lineLogin: { channelId: string, channelSecret: string, allowedRedirectUris: string[] }
+    lineLogin: { channelId: string, channelSecret: string, redirectUri: string }
   }
   loadStudents(): unknown[]
   loadAccounts(): unknown[]
@@ -43,10 +43,7 @@ test('test_getAppConfiguration_when_properties_exist_then_returns_configuration'
     lineLogin: {
       channelId: '2010930267',
       channelSecret: 'channel-secret',
-      allowedRedirectUris: [
-        'https://bingji-delta.vercel.app/auth/line-callback',
-        'http://localhost:3000/auth/line-callback',
-      ],
+      redirectUri: 'https://bingji-delta.vercel.app/auth/line-callback',
     },
   })
 })
@@ -248,10 +245,7 @@ async function loadSheetsContext(): Promise<{ context: SheetContext, state: Shee
           SESSION_SECRET: 'session-secret',
           LINE_CHANNEL_ID: '2010930267',
           LINE_CHANNEL_SECRET: 'channel-secret',
-          LINE_REDIRECT_URIS: [
-            'https://bingji-delta.vercel.app/auth/line-callback',
-            'http://localhost:3000/auth/line-callback',
-          ].join(','),
+          LINE_REDIRECT_URI: 'https://bingji-delta.vercel.app/auth/line-callback',
         }),
       }),
     },
