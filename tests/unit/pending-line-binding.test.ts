@@ -13,13 +13,29 @@ test('test_getPendingLineBinding_when_binding_is_saved_then_returns_binding', ()
   // Arrange
   const stub_storage = createStorageStub()
   const pendingBinding = { bindingToken: 'binding-token', phone: '0912345678' }
-  savePendingLineBinding(pendingBinding, stub_storage)
+  savePendingLineBinding(pendingBinding, stub_storage, 1_000)
 
   // Act
-  const result = getPendingLineBinding(stub_storage)
+  const result = getPendingLineBinding(stub_storage, 1_000)
 
   // Assert
   expect(result).toEqual(pendingBinding)
+})
+
+test('test_getPendingLineBinding_when_binding_is_expired_then_clears_binding', () => {
+  // Arrange
+  const stub_storage = createStorageStub(JSON.stringify({
+    bindingToken: 'binding-token',
+    phone: '0912345678',
+    expiresAt: 999,
+  }))
+
+  // Act
+  const result = getPendingLineBinding(stub_storage, 1_000)
+
+  // Assert
+  expect(result).toBeNull()
+  expect(stub_storage.getItem('pending_line_binding')).toBeNull()
 })
 
 test('test_getPendingLineBinding_when_saved_value_is_invalid_then_clears_binding', () => {

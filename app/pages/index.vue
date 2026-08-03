@@ -11,6 +11,7 @@ import {
 } from '../utils/pending-line-binding'
 
 const config = useRuntimeConfig()
+const route = useRoute()
 const errorMessage = ref('')
 const lineLoginUrl = ref('')
 const isRedirecting = ref(false)
@@ -23,6 +24,7 @@ onMounted(async () => {
     await navigateTo(session.role === 'teacher' ? '/teacher' : '/student')
     return
   }
+  showLoginRecoveryMessage()
   prepareLineLogin()
   await resumePendingLineBinding()
 })
@@ -78,9 +80,15 @@ function prepareLineLogin(): void {
       channelId: config.public.lineChannelId,
       redirectUri: config.public.lineRedirectUri,
     },
-    window.sessionStorage,
+    window.localStorage,
     () => crypto.randomUUID(),
   )
+}
+
+function showLoginRecoveryMessage(): void {
+  if (route.query.login === 'retry') {
+    errorMessage.value = '登入未完成，請再試一次。'
+  }
 }
 
 function handleLineLoginClick(event: MouseEvent): void {

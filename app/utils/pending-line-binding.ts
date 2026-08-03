@@ -6,6 +6,10 @@ export interface PendingLineBinding {
   phone: string
 }
 
+interface StoredPendingLineBinding extends PendingLineBinding {
+  expiresAt: number
+}
+
 export type BindPendingLineAccount = (
   pendingBinding: PendingLineBinding,
 ) => Promise<LoginResult>
@@ -15,14 +19,16 @@ export type PendingBindingWaiter = () => Promise<void>
 const pendingBindingKey = 'pending_line_binding'
 const maxBindingAttempts = 5
 const bindingRetryDelayMs = 1000
+const pendingBindingLifetimeMs = 10 * 60 * 1000
 
 export function getPendingLineBinding(
   storage: AuthSessionStorage,
+  now: number = Date.now(),
 ): PendingLineBinding | null {
   try {
     const pendingBinding = JSON.parse(storage.getItem(pendingBindingKey) ?? '')
-    if (isPendingLineBinding(pendingBinding)) {
-      return pendingBinding
+    if (isStoredPendingLineBinding(pendingBinding) && pendingBinding.expiresAt > now) {
+      return { bindingToken: pendingBinding.bindingToken, phone: pendingBinding.phone }
     }
   }
   catch {
@@ -36,8 +42,12 @@ export function getPendingLineBinding(
 export function savePendingLineBinding(
   pendingBinding: PendingLineBinding,
   storage: AuthSessionStorage,
+  now: number = Date.now(),
 ): void {
-  storage.setItem(pendingBindingKey, JSON.stringify(pendingBinding))
+  storage.setItem(pendingBindingKey, JSON.stringify({
+    ...pendingBinding,
+    expiresAt: now + pendingBindingLifetimeMs,
+  }))
 }
 
 export function clearPendingLineBinding(storage: AuthSessionStorage): void {
@@ -63,7 +73,7 @@ export async function completePendingLineBinding(
   throw new Error('STUDENT_NOT_FOUND')
 }
 
-function isPendingLineBinding(value: unknown): value is PendingLineBinding {
+function isStoredPendingLineBinding(value: unknown): value is StoredPendingLineBinding {
   if (!value || typeof value !== 'object') {
     return false
   }
@@ -72,6 +82,7 @@ function isPendingLineBinding(value: unknown): value is PendingLineBinding {
     && pendingBinding.bindingToken.length > 0
     && typeof pendingBinding.phone === 'string'
     && pendingBinding.phone.trim().length > 0
+    && typeof pendingBinding.expiresAt === 'number'
 }
 
 function shouldRetryBinding(error: unknown, attempt: number): boolean {
