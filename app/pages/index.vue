@@ -99,6 +99,7 @@ function handleLineLoginClick(event: MouseEvent): void {
 <template>
   <main class="auth-page login-page">
     <section class="login-shell" aria-labelledby="student-login-title">
+      <AppMark class="login-app-mark" />
       <h1 id="student-login-title" class="login-brand">冰記</h1>
       <p v-if="errorMessage" class="form-error" role="alert">{{ errorMessage }}</p>
       <a

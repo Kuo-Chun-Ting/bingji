@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { LogOut, Mountain } from '@lucide/vue'
+import { LogOut } from '@lucide/vue'
 
 defineProps<{
   showLogout?: boolean
@@ -13,7 +13,7 @@ defineEmits<{
 <template>
   <header class="app-header">
     <NuxtLink class="brand" to="/" aria-label="冰記首頁">
-      <span class="brand-mark" aria-hidden="true"><Mountain :size="22" /></span>
+      <AppMark compact />
       <span>
         <strong>冰記</strong>
       </span>

@@ -40,6 +40,7 @@ async function login(): Promise<void> {
 <template>
   <main class="auth-page login-page">
     <section class="login-shell" aria-labelledby="admin-login-title">
+      <AppMark class="login-app-mark" />
       <h1 id="admin-login-title" class="login-title">教練登入</h1>
       <form class="admin-login-form" @submit.prevent="login">
         <div class="form-field">

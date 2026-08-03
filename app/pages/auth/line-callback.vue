@@ -107,20 +107,24 @@ function getLoginErrorMessage(error: unknown): string {
 <template>
   <main class="auth-page login-page">
     <section class="login-shell" aria-label="學員登入">
-      <p v-if="isLoading" class="page-copy" role="status">正在確認身分...</p>
+      <AppMark class="login-app-mark" />
+      <p v-if="isLoading" class="login-status" role="status">正在確認身分...</p>
       <form v-else-if="bindingToken" aria-label="確認報名電話" @submit.prevent="bindPhone">
         <div class="form-field">
           <label for="phone">報名電話</label>
           <input id="phone" v-model="phone" type="tel" autocomplete="tel" inputmode="tel">
         </div>
-        <p class="form-error" aria-live="polite">{{ errorMessage }}</p>
+        <p v-if="errorMessage" class="form-error" aria-live="polite">{{ errorMessage }}</p>
         <button class="button button--primary button--full" type="submit" :disabled="isBinding">
           {{ isBinding ? '確認中...' : '確認' }}
         </button>
       </form>
-      <div v-else>
+      <div v-else class="login-error">
         <h1 class="login-title">無法登入</h1>
         <p class="form-error" role="alert">{{ errorMessage }}</p>
+        <NuxtLink class="button button--primary button--full" to="/">
+          重新登入
+        </NuxtLink>
       </div>
     </section>
   </main>
