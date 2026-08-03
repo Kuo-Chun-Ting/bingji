@@ -5,6 +5,7 @@ import type { LineLoginResult, LoginResult } from '../../../shared/types/domain'
 import { callAppsScriptAction } from '../../utils/apps-script-api'
 import { saveSession } from '../../utils/auth-session'
 import { validateLineCallback } from '../../utils/line-login'
+import { savePendingLineBinding } from '../../utils/pending-line-binding'
 import { getRegistrationFormRedirectUrl } from '../../utils/registration-form'
 
 const config = useRuntimeConfig()
@@ -69,6 +70,10 @@ function redirectUnregisteredStudent(error: unknown): boolean {
   if (!registrationUrl) {
     return false
   }
+  savePendingLineBinding({
+    bindingToken: bindingToken.value,
+    phone: phone.value,
+  }, window.localStorage)
   window.location.assign(registrationUrl)
   return true
 }
