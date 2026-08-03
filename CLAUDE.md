@@ -1,4 +1,4 @@
-# Agent Instructions
+# Claude Instructions
 
 ## 使用者 Review 時機
 
