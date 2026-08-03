@@ -72,6 +72,21 @@ test('test_loadStudents_when_source_sheet_has_rows_then_returns_students', async
   ])
 })
 
+test('test_loadStudents_when_student_sheets_have_only_headers_then_returns_empty_list', async () => {
+  // Arrange
+  const sourceSheetRows = [
+    [['姓名', '電話', 'Email', '購買堂數']],
+    [['時間戳記', '姓名', '電話', 'Email', '購買堂數']],
+  ]
+  const { context } = await loadSheetsContext(sourceSheetRows)
+
+  // Act
+  const students = context.loadStudents?.()
+
+  // Assert
+  expect(students).toEqual([])
+})
+
 test('test_loadStudents_when_form_has_duplicate_phone_and_unrelated_sheet_then_uses_manual_student', async () => {
   // Arrange
   const sourceSheetRows = [

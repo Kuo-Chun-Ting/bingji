@@ -41,18 +41,20 @@ function loadStudents() {
   }
   var manualStudents = []
   var formStudents = []
+  var hasStudentSheet = false
   sheets.forEach(function (sheet) {
     var rows = sheet.getDataRange().getDisplayValues()
     if (!isStudentSheetRows(rows)) {
       return
     }
+    hasStudentSheet = true
     if (isGoogleFormStudentRows(rows)) {
       formStudents = formStudents.concat(parseStudentRows(rows))
       return
     }
     manualStudents = manualStudents.concat(parseStudentRows(rows))
   })
-  if (manualStudents.length === 0 && formStudents.length === 0) {
+  if (!hasStudentSheet) {
     throw new Error('SOURCE_SHEET_NOT_FOUND')
   }
   var mergedManualStudents = mergeStudentsByPhone(manualStudents)
