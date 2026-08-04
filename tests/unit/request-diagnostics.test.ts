@@ -2,7 +2,9 @@ import { expect, test } from 'vitest'
 
 import {
   clearAppsScriptDiagnostics,
+  formatDiagnosticDuration,
   getAppsScriptDiagnostics,
+  getAppsScriptTimingBreakdown,
   recordAppsScriptDiagnostic,
   type AppsScriptDiagnosticStorage,
   type AppsScriptRequestDiagnostic,
@@ -45,6 +47,66 @@ test('test_clearAppsScriptDiagnostics_when_records_exist_then_removes_records', 
 
   // Assert
   expect(getAppsScriptDiagnostics(storage)).toEqual([])
+})
+
+test('test_getAppsScriptTimingBreakdown_when_backend_diagnostics_exist_then_returns_nested_durations', () => {
+  // Arrange
+  const diagnostic = createDiagnostic(1)
+  diagnostic.responseWaitMs = 3910
+  diagnostic.parseMs = 0
+  diagnostic.totalMs = 3910
+  diagnostic.backend = {
+    requestId: 'request-1',
+    action: 'getStudentDashboard',
+    status: 'success',
+    errorCode: null,
+    durationMs: 1676,
+    phases: [
+      { phase: 'loadStudents', durationMs: 512 },
+      { phase: 'loadRegistrations', durationMs: 874 },
+      { phase: 'loadCourses', durationMs: 260 },
+    ],
+  }
+
+  // Act
+  const breakdown = getAppsScriptTimingBreakdown(diagnostic)
+
+  // Assert
+  expect(breakdown).toEqual({
+    totalMs: 3910,
+    platformWaitMs: 2234,
+    backendMs: 1676,
+    backendOtherMs: 30,
+    parseMs: 0,
+  })
+})
+
+test('test_getAppsScriptTimingBreakdown_when_backend_diagnostics_are_missing_then_marks_unknown_durations', () => {
+  // Arrange
+  const diagnostic = createDiagnostic(1)
+
+  // Act
+  const breakdown = getAppsScriptTimingBreakdown(diagnostic)
+
+  // Assert
+  expect(breakdown).toEqual({
+    totalMs: 105,
+    platformWaitMs: null,
+    backendMs: null,
+    backendOtherMs: null,
+    parseMs: 5,
+  })
+})
+
+test('test_formatDiagnosticDuration_when_duration_crosses_one_second_then_uses_readable_units', () => {
+  // Arrange
+  const durations = [null, 0, 512, 1676]
+
+  // Act
+  const labels = durations.map(formatDiagnosticDuration)
+
+  // Assert
+  expect(labels).toEqual(['-', '0 ms', '512 ms', '1.68 秒'])
 })
 
 function createDiagnostic(recordedAt: number): AppsScriptRequestDiagnostic {

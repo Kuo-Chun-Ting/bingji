@@ -34,6 +34,14 @@ export interface AppsScriptRequestDiagnostic {
   backend: AppsScriptBackendDiagnostics | null
 }
 
+export interface AppsScriptTimingBreakdown {
+  totalMs: number
+  platformWaitMs: number | null
+  backendMs: number | null
+  backendOtherMs: number | null
+  parseMs: number | null
+}
+
 export interface AppsScriptDiagnosticStorage {
   getItem(key: string): string | null
   setItem(key: string, value: string): void
@@ -84,6 +92,38 @@ export function clearAppsScriptDiagnostics(
   storage: AppsScriptDiagnosticStorage | null = getBrowserStorage(),
 ): void {
   storage?.removeItem(APPS_SCRIPT_DIAGNOSTICS_STORAGE_KEY)
+}
+
+export function getAppsScriptTimingBreakdown(
+  diagnostic: AppsScriptRequestDiagnostic,
+): AppsScriptTimingBreakdown {
+  const backendMs = diagnostic.backend?.durationMs ?? null
+  const backendPhaseMs = diagnostic.backend?.phases.reduce(
+    (total, phase) => total + phase.durationMs,
+    0,
+  ) ?? null
+
+  return {
+    totalMs: diagnostic.totalMs,
+    platformWaitMs: diagnostic.responseWaitMs === null || backendMs === null
+      ? null
+      : Math.max(0, diagnostic.responseWaitMs - backendMs),
+    backendMs,
+    backendOtherMs: backendMs === null || backendPhaseMs === null
+      ? null
+      : Math.max(0, backendMs - backendPhaseMs),
+    parseMs: diagnostic.parseMs,
+  }
+}
+
+export function formatDiagnosticDuration(durationMs: number | null): string {
+  if (durationMs === null) {
+    return '-'
+  }
+
+  return durationMs < 1000
+    ? `${durationMs} ms`
+    : `${(durationMs / 1000).toFixed(2)} 秒`
 }
 
 function getBrowserStorage(): AppsScriptDiagnosticStorage | null {
