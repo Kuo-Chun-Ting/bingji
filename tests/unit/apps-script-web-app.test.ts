@@ -47,12 +47,20 @@ test('test_doPost_when_action_succeeds_then_returns_action_result', async () => 
   const output = context.doPost(event)
 
   // Assert
-  expect(JSON.parse(output.content)).toEqual({
+  const response = JSON.parse(output.content)
+  expect(response).toMatchObject({
     ok: true,
     result: {
       action: 'login',
       payload: { phone: '0912345678', password: 'test-password' },
     },
+  })
+  expect(response.diagnostics).toMatchObject({
+    requestId: 'request-id',
+    action: 'login',
+    status: 'success',
+    errorCode: null,
+    phases: [{ phase: 'testAction', durationMs: 0 }],
   })
   expect(output.mimeType).toBe('application/json')
   expect(context.performanceLogs).toHaveLength(1)
@@ -80,9 +88,16 @@ test('test_doPost_when_action_throws_known_error_then_returns_error_code', async
   const output = context.doPost(event)
 
   // Assert
-  expect(JSON.parse(output.content)).toEqual({
+  const response = JSON.parse(output.content)
+  expect(response).toMatchObject({
     ok: false,
     code: 'FORBIDDEN',
+  })
+  expect(response.diagnostics).toMatchObject({
+    requestId: 'request-id',
+    action: 'forbidden',
+    status: 'error',
+    errorCode: 'FORBIDDEN',
   })
   expect(output.mimeType).toBe('application/json')
   expect(JSON.parse(context.performanceLogs[0].replace('[PERF] ', ''))).toMatchObject({
@@ -105,9 +120,16 @@ test('test_doPost_when_teacher_credentials_are_invalid_then_returns_credentials_
   const output = context.doPost(event)
 
   // Assert
-  expect(JSON.parse(output.content)).toEqual({
+  expect(JSON.parse(output.content)).toMatchObject({
     ok: false,
     code: 'INVALID_CREDENTIALS',
+    diagnostics: {
+      requestId: 'request-id',
+      action: 'invalidCredentials',
+      status: 'error',
+      errorCode: 'INVALID_CREDENTIALS',
+      phases: [],
+    },
   })
 })
 
@@ -124,9 +146,16 @@ test('test_doPost_when_line_auth_throws_diagnostic_error_then_returns_diagnostic
   const output = context.doPost(event)
 
   // Assert
-  expect(JSON.parse(output.content)).toEqual({
+  expect(JSON.parse(output.content)).toMatchObject({
     ok: false,
     code: 'LINE_TOKEN_EXCHANGE_FAILED:INVALID_GRANT',
+    diagnostics: {
+      requestId: 'request-id',
+      action: 'lineFailure',
+      status: 'error',
+      errorCode: 'LINE_TOKEN_EXCHANGE_FAILED:INVALID_GRANT',
+      phases: [],
+    },
   })
 })
 

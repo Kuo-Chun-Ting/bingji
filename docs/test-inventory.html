@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>冰記測試清單</title>
+</head>
+<body>
+  <main>
+    <h1>冰記測試清單</h1>
+    <table>
+      <thead>
+        <tr>
+          <th>範圍</th>
+          <th>檔案</th>
+          <th>驗證內容</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Apps Script Web App</td>
+          <td>tests/unit/apps-script-web-app.test.ts</td>
+          <td>健康檢查、成功與失敗回應、後端診斷資料</td>
+        </tr>
+        <tr>
+          <td>Apps Script API client</td>
+          <td>tests/unit/apps-script-api.test.ts</td>
+          <td>API 回應、前端等待時間、後端耗時、網路錯誤</td>
+        </tr>
+        <tr>
+          <td>診斷紀錄儲存</td>
+          <td>tests/unit/request-diagnostics.test.ts</td>
+          <td>最近 20 筆限制、損壞資料容錯、清除紀錄</td>
+        </tr>
+      </tbody>
+    </table>
+  </main>
+</body>
+</html>

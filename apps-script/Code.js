@@ -12,18 +12,22 @@ function doPost(event) {
     var request = parseRequest(event)
     diagnostics.action = request.action
     var result = executeAction(request.action, request.payload, diagnostics)
-    logRequestDiagnostics(diagnostics, 'success')
+    var completedDiagnostics = completeRequestDiagnostics(diagnostics, 'success')
+    logRequestDiagnostics(completedDiagnostics)
     return createJsonOutput({
       ok: true,
       result: result,
+      diagnostics: completedDiagnostics,
     })
   }
   catch (error) {
     var errorCode = getErrorCode(error)
-    logRequestDiagnostics(diagnostics, 'error', errorCode)
+    var failedDiagnostics = completeRequestDiagnostics(diagnostics, 'error', errorCode)
+    logRequestDiagnostics(failedDiagnostics)
     return createJsonOutput({
       ok: false,
       code: errorCode,
+      diagnostics: failedDiagnostics,
     })
   }
 }
@@ -37,15 +41,19 @@ function createRequestDiagnostics() {
   }
 }
 
-function logRequestDiagnostics(diagnostics, status, errorCode) {
-  console.info('[PERF] ' + JSON.stringify({
+function completeRequestDiagnostics(diagnostics, status, errorCode) {
+  return {
     requestId: diagnostics.requestId,
     action: diagnostics.action,
     status: status,
     errorCode: errorCode || null,
     durationMs: Date.now() - diagnostics.startedAt,
     phases: diagnostics.phases,
-  }))
+  }
+}
+
+function logRequestDiagnostics(diagnostics) {
+  console.info('[PERF] ' + JSON.stringify(diagnostics))
 }
 
 function createJsonOutput(payload) {
