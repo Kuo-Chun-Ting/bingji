@@ -137,6 +137,18 @@ NUXT_PUBLIC_REGISTRATION_FORM_URL=https://docs.google.com/forms/d/e/FORM_ID/view
 npm run dev
 ```
 
+## 測試
+
+```bash
+npm test
+npm run test:unit
+npm run test:component
+npm run test:e2e
+npm run test:e2e:live
+```
+
+依修改範圍執行必要測試；修改涵蓋多個測試層級或影響範圍不明時執行 `npm test`。只有修改真實外部串接時才執行 Live E2E。
+
 ## LINE 登入
 
 LINE Developers Console 的 LINE Login Channel 必須設定正式環境的 Callback URL：

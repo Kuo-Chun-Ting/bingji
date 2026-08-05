@@ -7,7 +7,11 @@
     "build": "nuxt build",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
-    "test": "vitest run",
+    "test": "npm run test:unit && npm run test:component && npm run test:e2e && npm run typecheck",
+    "test:unit": "vitest run --project unit",
+    "test:component": "vitest run --project component",
+    "test:e2e": "playwright test --grep-invert @live",
+    "test:e2e:live": "playwright test --grep @live --pass-with-no-tests",
     "typecheck": "nuxt typecheck",
     "apps:login": "npm --prefix apps-script run login",
     "apps:status": "npm --prefix apps-script run status",
@@ -21,7 +25,11 @@
     "nuxt": "4.5.1"
   },
   "devDependencies": {
+    "@nuxt/test-utils": "4.1.0",
+    "@playwright/test": "1.62.1",
     "@types/node": "^24.10.1",
+    "@vue/test-utils": "2.4.11",
+    "happy-dom": "20.11.1",
     "typescript": "5.9.3",
     "vitest": "4.1.10",
     "vue-tsc": "3.3.8"

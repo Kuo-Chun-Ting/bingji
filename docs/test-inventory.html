@@ -37,6 +37,36 @@
           <td>tests/unit/request-diagnostics.test.ts</td>
           <td>最近 20 筆限制、損壞資料容錯、清除紀錄、請求耗時階層</td>
         </tr>
+        <tr>
+          <td>AppHeader component</td>
+          <td>tests/component/AppHeader.test.ts</td>
+          <td>品牌連結、登出按鈕顯示與登出事件</td>
+        </tr>
+        <tr>
+          <td>StatusBadge component</td>
+          <td>tests/component/StatusBadge.test.ts</td>
+          <td>四種報名狀態的文字與視覺語意</td>
+        </tr>
+        <tr>
+          <td>CourseCard component</td>
+          <td>tests/component/CourseCard.test.ts</td>
+          <td>課程開放、關閉、已報名、處理中、隱藏報名操作與報名事件</td>
+        </tr>
+        <tr>
+          <td>學員 E2E</td>
+          <td>tests/e2e/student-flow.spec.ts</td>
+          <td>LINE callback、課程報名、無效 session、Google 表單導向</td>
+        </tr>
+        <tr>
+          <td>教練 E2E</td>
+          <td>tests/e2e/teacher-flow.spec.ts</td>
+          <td>分別驗證教練登入與到課狀態更新</td>
+        </tr>
+        <tr>
+          <td>E2E 執行環境</td>
+          <td>playwright.config.ts</td>
+          <td>以 production build 與 preview server 執行；LINE 與 Apps Script 等外部服務由 Playwright stub</td>
+        </tr>
       </tbody>
     </table>
   </main>

@@ -5,6 +5,9 @@ node_modules/
 .env.*
 !.env.example
 coverage/
+.playwright-mcp/
+playwright-report/
+test-results/
 dist/
 dist
 apps-script/.clasp.json
