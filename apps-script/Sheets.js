@@ -40,7 +40,7 @@ function getAppConfiguration() {
 }
 
 function loadStudents() {
-  var sheet = getDataSheet(FORM_RESPONSE_SHEET_NAME)
+  var sheet = getDataSheet(FORM_RESPONSE_SHEET_NAME, 'SOURCE_SHEET_NOT_FOUND')
   var formResponseRows = sheet.getDataRange().getDisplayValues()
   if (!isStudentSheetRows(formResponseRows)) {
     throw new Error('SOURCE_SHEET_NOT_FOUND')
@@ -97,10 +97,10 @@ function getDataSheetRows(sheetName) {
   return getDataSheet(sheetName).getDataRange().getDisplayValues()
 }
 
-function getDataSheet(sheetName) {
+function getDataSheet(sheetName, missingSheetErrorCode) {
   var sheet = getSpreadsheet().getSheetByName(sheetName)
   if (!sheet) {
-    throw new Error('OPERATIONS_SHEET_NOT_FOUND')
+    throw new Error(missingSheetErrorCode || 'OPERATIONS_SHEET_NOT_FOUND')
   }
   return sheet
 }

@@ -20,6 +20,7 @@ interface SheetContext {
 
 interface SheetState {
   configurationReads: number
+  sheetDataReads: Record<string, number>
   spreadsheetOpenIds: string[]
   writeOperations: Array<{ type: 'format' | 'values', row: number }>
   replacedRanges: Array<{ row: number, values: unknown[][] }>
@@ -66,10 +67,10 @@ test('test_loadStudents_when_form_response_sheet_has_rows_then_returns_students'
 
 test('test_loadStudents_when_form_response_sheet_has_only_headers_then_returns_empty_list', async () => {
   // Arrange
-  const spreadsheetRows = {
+  const allSheetRows = {
     '表單回覆 1': [['時間戳記', '姓名', '電話', 'Email', '購買堂數']],
   }
-  const { context } = await loadSheetsContext(spreadsheetRows)
+  const { context } = await loadSheetsContext(allSheetRows)
 
   // Act
   const students = context.loadStudents?.()
@@ -78,9 +79,28 @@ test('test_loadStudents_when_form_response_sheet_has_only_headers_then_returns_e
   expect(students).toEqual([])
 })
 
+test('test_loadStudents_when_form_response_sheet_is_missing_then_throws_source_sheet_not_found', async () => {
+  // Arrange
+  const { context } = await loadSheetsContext({})
+
+  // Act & Assert
+  expect(() => context.loadStudents?.()).toThrowError('SOURCE_SHEET_NOT_FOUND')
+})
+
+test('test_loadStudents_when_form_response_sheet_headers_are_invalid_then_throws_source_sheet_not_found', async () => {
+  // Arrange
+  const allSheetRows = {
+    '表單回覆 1': [['姓名', '電話', 'Email', '購買堂數']],
+  }
+  const { context } = await loadSheetsContext(allSheetRows)
+
+  // Act & Assert
+  expect(() => context.loadStudents?.()).toThrowError('SOURCE_SHEET_NOT_FOUND')
+})
+
 test('test_loadStudents_when_other_sheets_have_matching_headers_then_reads_named_form_response_sheet', async () => {
   // Arrange
-  const spreadsheetRows = {
+  const allSheetRows = {
     accounts: [
       ['姓名', '電話', 'Email', '購買堂數'],
       ['王小明', '0912-345-678', 'manual@example.com', '4'],
@@ -91,7 +111,7 @@ test('test_loadStudents_when_other_sheets_have_matching_headers_then_reads_named
     ],
     notes: [['備註', '內容'], ['測試', '不應讀取']],
   }
-  const { context } = await loadSheetsContext(spreadsheetRows)
+  const { context, state } = await loadSheetsContext(allSheetRows)
 
   // Act
   const students = context.loadStudents?.()
@@ -103,6 +123,7 @@ test('test_loadStudents_when_other_sheets_have_matching_headers_then_reads_named
     email: 'another@example.com',
     purchasedLessons: 2,
   }])
+  expect(state.sheetDataReads).toEqual({ '表單回覆 1': 1 })
 })
 
 test('test_loadAllData_when_using_one_spreadsheet_then_reads_configuration_and_opens_spreadsheet_once', async () => {
@@ -228,7 +249,7 @@ test('test_replaceRegistration_when_id_exists_then_replaces_matching_row', async
   }])
 })
 
-async function loadSheetsContext(spreadsheetRows?: Record<string, unknown[][]>): Promise<{ context: SheetContext, state: SheetState }> {
+async function loadSheetsContext(allSheetRows?: Record<string, unknown[][]>): Promise<{ context: SheetContext, state: SheetState }> {
   const domainSource = await readFile('apps-script/Domain.js', 'utf8')
   let sheetsSource = ''
   try {
@@ -240,6 +261,7 @@ async function loadSheetsContext(spreadsheetRows?: Record<string, unknown[][]>):
 
   const state: SheetState = {
     configurationReads: 0,
+    sheetDataReads: {},
     spreadsheetOpenIds: [],
     writeOperations: [],
     replacedRanges: [],
@@ -263,10 +285,13 @@ async function loadSheetsContext(spreadsheetRows?: Record<string, unknown[][]>):
     ],
   }
 
-  const createMockSheet = (rows: unknown[][]) => ({
-    getDataRange: () => ({
-      getDisplayValues: () => rows,
-    }),
+  const createMockSheet = (name: string, rows: unknown[][]) => ({
+    getDataRange: () => {
+      state.sheetDataReads[name] = (state.sheetDataReads[name] ?? 0) + 1
+      return {
+        getDisplayValues: () => rows,
+      }
+    },
     getLastRow: () => rows.length,
     getRange: (row: number) => ({
       setNumberFormat: () => {
@@ -285,13 +310,13 @@ async function loadSheetsContext(spreadsheetRows?: Record<string, unknown[][]>):
     }),
   })
 
-  const allRows = {
+  const defaultRows = {
     '表單回覆 1': formResponseRows,
     ...operationsRows,
-    ...spreadsheetRows,
   }
+  const allRows = allSheetRows ?? defaultRows
   const mockSheets = Object.fromEntries(
-    Object.entries(allRows).map(([name, rows]) => [name, createMockSheet(rows)]),
+    Object.entries(allRows).map(([name, rows]) => [name, createMockSheet(name, rows)]),
   )
   const context = {
     Utilities: {
