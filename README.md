@@ -1,168 +1,80 @@
-# 冰記
+# Bingji
 
-Nuxt 靜態前端透過 Google Apps Script 讀寫 Google Sheet。
+[Production](https://bingji-delta.vercel.app)
 
-## Google Sheet 設定
+Bingji is an MVP built to validate whether LINE Login, Google Forms, and Google Sheets can support a real course registration and attendance workflow with minimal infrastructure.
 
-使用一個 Spreadsheet，集中表單回覆與營運資料。
+The project is designed for skating classes in Taiwan, where coaches and students already use LINE for class communication. Students use their LINE account instead of creating another account and password.
 
-### Google Form 報名
+## Features
 
-Google Form 使用以下四個必填簡答欄位，名稱與順序必須一致：
+- Students sign in with LINE, register for open classes, and review attendance history.
+- New students submit their information through Google Form.
+- Coaches manage classes and confirm attendance from a separate admin interface.
+- Lessons are deducted only after attendance is confirmed.
 
-```text
-姓名 | 電話 | Email | 購買堂數
+## Architecture
+
+```mermaid
+flowchart LR
+    Student[Student] -->|LINE Login| LINE[LINE OAuth]
+    Student -->|First registration| Form[Google Form]
+    Coach[Coach] -->|Admin login| App[Nuxt on Vercel]
+    LINE --> App
+    Form --> Sheet[(Google Sheet)]
+    App -->|JSON API| API[Google Apps Script]
+    API --> Sheet
 ```
 
-將表單回應連結到 Spreadsheet。Google 會建立 `表單回覆 1` 分頁，第一列依序為：
+Google Form collects student information. One spreadsheet stores form responses, LINE account mappings, courses, and registrations in separate tabs. Apps Script provides the API and keeps credentials outside the frontend.
 
-```text
-時間戳記 | 姓名 | 電話 | Email | 購買堂數
-```
+**Stack:** Nuxt 4, Vue 3, TypeScript, Google Apps Script, Google Sheets, Google Forms, LINE Login, Vitest, and Playwright.
 
-Apps Script 固定讀取這個分頁。表單不限制每人只能回覆一次，避免要求學員登入 Google 帳號；同一電話重複填表時採用最後一筆。
+## Design Trade-offs
 
-送出後確認訊息應包含正式學員登入網址，讓學員回到網站重新使用 LINE 登入。
+| Decision | Benefit | Limitation |
+| --- | --- | --- |
+| LINE Login | Matches how students already communicate | Depends on LINE channel and callback configuration |
+| Google Sheets storage | Low operating cost and familiar to the coach | Higher, less predictable latency than a database |
+| Apps Script backend | Direct Sheet integration and simple deployment | Limited runtime control and observability |
+| Shared coach account | Sufficient for a single-coach MVP | No individual audit trail |
 
-在同一個 Spreadsheet 建立以下三個營運分頁，名稱與第一列欄位必須完全一致：
+The backend validates OAuth `state` and OpenID Connect `nonce`, issues application session tokens, and uses Apps Script locks to protect concurrent writes. Request diagnostics separate browser, network, backend, and Sheet timings for performance investigation.
 
-```text
-accounts
-phone | lineUserId
+## Production
 
-courses
-id | date | startTime | endTime | isOpen
+The deployed application uses the production LINE Login channel and data source:
 
-registrations
-id | courseId | phone | status | createdAt | updatedAt
-```
+https://bingji-delta.vercel.app
 
-- `accounts`：LINE 身分綁定紀錄。第一列必須保留；其餘列由系統在首次登入時建立。
-- `courses`：直接在 Sheet 建立課程；`isOpen` 使用 `TRUE` 或 `FALSE`。
-- `registrations`：只建立欄位列，報名與到課紀錄由系統寫入。
+A LINE account is required. The application is connected to real production data rather than a disposable demo environment.
 
-## Apps Script 設定
-
-在 Apps Script 專案的「專案設定 > 指令碼屬性」加入：
-
-```text
-SPREADSHEET_ID=包含表單回覆與營運分頁的 Spreadsheet ID
-ADMIN_ACCOUNT=教練共用帳號
-ADMIN_PASSWORD=教練共用密碼
-SESSION_SECRET=自訂的長隨機字串
-LINE_CHANNEL_ID=LINE Login Channel ID
-LINE_CHANNEL_SECRET=LINE Login Channel secret
-LINE_REDIRECT_URI=https://你的前端網域/auth/line-callback
-```
-
-部署必須設定為「以部署者身分執行」，存取權限設為「任何人」。
-
-## Apps Script 部署
-
-Apps Script 原始碼位於 `apps-script/`。部署使用 `scripts/` 內的兩個可執行 shell script。
-
-### 一次性設定
+## Development and Testing
 
 ```bash
 npm install
-npm install --prefix apps-script
-```
-
-1. 在 [Apps Script 設定](https://script.google.com/home/usersettings) 啟用 Apps Script API。
-2. 登入擁有 Apps Script 專案的 Google 帳號：
-
-```bash
-npm run apps:login
-```
-
-3. 建立 `apps-script/.clasp.json`：
-
-```json
-{
-  "scriptId": "YOUR_APPS_SCRIPT_ID",
-  "rootDir": "."
-}
-```
-
-將 `YOUR_APPS_SCRIPT_ID` 替換為目標 Apps Script 的 Script ID。這個檔案只保留在本機，不提交 Git。
-
-上述設定只在首次連接 Apps Script，或更換 Apps Script 專案時執行。
-
-### 第一次部署
-
-```bash
-./scripts/deploy-apps-script-init.sh
-```
-
-此指令會上傳 Apps Script 並建立 Web App deployment。Google 會印出 deployment ID。
-
-將該 ID 填入 `apps-script/package.json` 的 `redeploy` 指令，取代 `REPLACE_WITH_DEPLOYMENT_ID`。這只需要做一次。
-
-Web App URL 格式如下，將 deployment ID 代入後寫入 `.env`：
-
-```env
-NUXT_PUBLIC_APPS_SCRIPT_URL=https://script.google.com/macros/s/DEPLOYMENT_ID/exec
-```
-
-### 後續部署
-
-```bash
-./scripts/deploy-apps-script.sh
-```
-
-此指令會上傳 Apps Script 並更新既有 Web App deployment。Web App URL 維持不變。
-
-### 檢查同步內容
-
-```bash
-npm run apps:status
-```
-
-列出會上傳到 Google Apps Script 的檔案，不會修改遠端內容。
-
-## 本機啟動
-
-在 `.env` 設定 Web App URL：
-
-```env
-NUXT_PUBLIC_APPS_SCRIPT_URL=https://script.google.com/macros/s/DEPLOYMENT_ID/exec
-NUXT_PUBLIC_LINE_CHANNEL_ID=LINE Login Channel ID
-NUXT_PUBLIC_LINE_REDIRECT_URI=https://你的前端網域/auth/line-callback
-NUXT_PUBLIC_REGISTRATION_FORM_URL=https://docs.google.com/forms/d/e/FORM_ID/viewform?usp=pp_url&entry.PHONE_FIELD_ID={phone}
-```
-
-啟動前端：
-
-```bash
-npm run dev
-```
-
-## 測試
-
-```bash
 npm test
+```
+
+The non-live E2E suite runs against a production build and stubs LINE and Apps Script, so it does not require private accounts or credentials.
+
+```bash
 npm run test:unit
 npm run test:component
 npm run test:e2e
 npm run test:e2e:live
 ```
 
-依修改範圍執行必要測試；修改涵蓋多個測試層級或影響範圍不明時執行 `npm test`。只有修改真實外部串接時才執行 Live E2E。
+`npm run dev` starts the frontend locally, but the complete LINE Login flow returns to the configured production callback URL.
 
-## LINE 登入
+## Limitations
 
-LINE Developers Console 的 LINE Login Channel 必須設定正式環境的 Callback URL：
+- Apps Script and Google Sheets introduce variable request latency.
+- The shared coach account is intended for a single-coach workflow.
+- Full LINE Login verification depends on the production callback and external LINE configuration.
 
-```text
-https://你的前端網域/auth/line-callback
-```
+## Documentation
 
-所有環境的 `NUXT_PUBLIC_LINE_REDIRECT_URI` 都使用正式環境 URL，完整 LINE 登入流程只在正式環境驗證。
-
-學員首次 LINE 登入時，輸入 Google Form 報名用的電話。系統確認電話存在後，將 LINE user ID 寫入同一個 Spreadsheet 的 `accounts` 分頁。之後只需使用 LINE 登入。
-
-找不到電話時，前端會導向 `NUXT_PUBLIC_REGISTRATION_FORM_URL`，並以 `{phone}` 預填剛才輸入的電話。Google Form 回應必須連結至 `SPREADSHEET_ID` 指向的 Spreadsheet。
-
-教練直接從 `/admin` 使用共用帳號密碼登入。學員首頁不顯示教練入口。`ADMIN_ACCOUNT` 與 `ADMIN_PASSWORD` 只設定在 Apps Script 的指令碼屬性，不需要寫入 Sheet。
-
-`LINE_CHANNEL_SECRET` 與 `ADMIN_PASSWORD` 只能存在 Apps Script 的指令碼屬性，不能放入 `.env`、前端程式或 Git。
+- [Self-hosting](docs/self-hosting.md)
+- [LINE Login flow](docs/line-login-flow.md)
+- [Test inventory](docs/test-inventory.html)
