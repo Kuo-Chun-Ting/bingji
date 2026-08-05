@@ -1,8 +1,15 @@
+var FORM_RESPONSE_SHEET_NAME = '表單回覆 1'
+var appConfigurationMemo = null
+var spreadsheetMemo = null
+
 function getAppConfiguration() {
+  if (appConfigurationMemo) {
+    return appConfigurationMemo
+  }
+
   var properties = PropertiesService.getScriptProperties().getProperties()
   var requiredKeys = [
-    'SOURCE_SPREADSHEET_ID',
-    'OPERATIONS_SPREADSHEET_ID',
+    'SPREADSHEET_ID',
     'ADMIN_ACCOUNT',
     'ADMIN_PASSWORD',
     'SESSION_SECRET',
@@ -16,9 +23,8 @@ function getAppConfiguration() {
     }
   })
 
-  return {
-    sourceSpreadsheetId: properties.SOURCE_SPREADSHEET_ID,
-    operationsSpreadsheetId: properties.OPERATIONS_SPREADSHEET_ID,
+  appConfigurationMemo = {
+    spreadsheetId: properties.SPREADSHEET_ID,
     teacherCredentials: {
       username: properties.ADMIN_ACCOUNT,
       password: properties.ADMIN_PASSWORD,
@@ -30,45 +36,37 @@ function getAppConfiguration() {
       redirectUri: properties.LINE_REDIRECT_URI,
     },
   }
+  return appConfigurationMemo
 }
 
 function loadStudents() {
-  var configuration = getAppConfiguration()
-  var spreadsheet = SpreadsheetApp.openById(configuration.sourceSpreadsheetId)
-  var formResponseRows = null
-  spreadsheet.getSheets().some(function (sheet) {
-    var rows = sheet.getDataRange().getDisplayValues()
-    if (!isStudentSheetRows(rows)) {
-      return false
-    }
-    formResponseRows = rows
-    return true
-  })
-  if (!formResponseRows) {
+  var sheet = getDataSheet(FORM_RESPONSE_SHEET_NAME)
+  var formResponseRows = sheet.getDataRange().getDisplayValues()
+  if (!isStudentSheetRows(formResponseRows)) {
     throw new Error('SOURCE_SHEET_NOT_FOUND')
   }
   return parseStudentRows(formResponseRows)
 }
 
 function loadAccounts() {
-  return parseAccountRows(getOperationsSheetRows('accounts'))
+  return parseAccountRows(getDataSheetRows('accounts'))
 }
 
 function loadCourses() {
-  return parseCourseRows(getOperationsSheetRows('courses'))
+  return parseCourseRows(getDataSheetRows('courses'))
 }
 
 function loadRegistrations() {
-  return parseRegistrationRows(getOperationsSheetRows('registrations'))
+  return parseRegistrationRows(getDataSheetRows('registrations'))
 }
 
 function appendRegistration(registration) {
-  var sheet = getOperationsSheet('registrations')
+  var sheet = getDataSheet('registrations')
   writeRegistrationRow(sheet, sheet.getLastRow() + 1, registration)
 }
 
 function appendAccount(account) {
-  var sheet = getOperationsSheet('accounts')
+  var sheet = getDataSheet('accounts')
   sheet
     .getRange(sheet.getLastRow() + 1, 1, 1, 2)
     .setNumberFormat('@')
@@ -76,7 +74,7 @@ function appendAccount(account) {
 }
 
 function replaceRegistration(registration) {
-  var sheet = getOperationsSheet('registrations')
+  var sheet = getDataSheet('registrations')
   var rows = sheet.getDataRange().getDisplayValues()
   var rowIndex = rows.findIndex(function (row, index) {
     return index > 0 && String(row[0]) === registration.id
@@ -95,18 +93,24 @@ function writeRegistrationRow(sheet, rowNumber, registration) {
     .setValues([toRegistrationRow(registration)])
 }
 
-function getOperationsSheetRows(sheetName) {
-  return getOperationsSheet(sheetName).getDataRange().getDisplayValues()
+function getDataSheetRows(sheetName) {
+  return getDataSheet(sheetName).getDataRange().getDisplayValues()
 }
 
-function getOperationsSheet(sheetName) {
-  var configuration = getAppConfiguration()
-  var spreadsheet = SpreadsheetApp.openById(configuration.operationsSpreadsheetId)
-  var sheet = spreadsheet.getSheetByName(sheetName)
+function getDataSheet(sheetName) {
+  var sheet = getSpreadsheet().getSheetByName(sheetName)
   if (!sheet) {
     throw new Error('OPERATIONS_SHEET_NOT_FOUND')
   }
   return sheet
+}
+
+function getSpreadsheet() {
+  if (!spreadsheetMemo) {
+    var configuration = getAppConfiguration()
+    spreadsheetMemo = SpreadsheetApp.openById(configuration.spreadsheetId)
+  }
+  return spreadsheetMemo
 }
 
 function toRegistrationRow(registration) {

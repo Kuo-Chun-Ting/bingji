@@ -5,8 +5,7 @@ import { expect, test } from 'vitest'
 
 interface SheetContext {
   getAppConfiguration(): {
-    sourceSpreadsheetId: string
-    operationsSpreadsheetId: string
+    spreadsheetId: string
     teacherCredentials: { username: string, password: string }
     sessionSecret: string
     lineLogin: { channelId: string, channelSecret: string, redirectUri: string }
@@ -20,6 +19,8 @@ interface SheetContext {
 }
 
 interface SheetState {
+  configurationReads: number
+  spreadsheetOpenIds: string[]
   writeOperations: Array<{ type: 'format' | 'values', row: number }>
   replacedRanges: Array<{ row: number, values: unknown[][] }>
 }
@@ -33,8 +34,7 @@ test('test_getAppConfiguration_when_properties_exist_then_returns_configuration'
 
   // Assert
   expect(configuration).toEqual({
-    sourceSpreadsheetId: 'source-spreadsheet',
-    operationsSpreadsheetId: 'operations-spreadsheet',
+    spreadsheetId: 'single-spreadsheet',
     teacherCredentials: {
       username: 'coach',
       password: 'shared-password',
@@ -66,8 +66,10 @@ test('test_loadStudents_when_form_response_sheet_has_rows_then_returns_students'
 
 test('test_loadStudents_when_form_response_sheet_has_only_headers_then_returns_empty_list', async () => {
   // Arrange
-  const sourceSheetRows = [[['時間戳記', '姓名', '電話', 'Email', '購買堂數']]]
-  const { context } = await loadSheetsContext(sourceSheetRows)
+  const spreadsheetRows = {
+    '表單回覆 1': [['時間戳記', '姓名', '電話', 'Email', '購買堂數']],
+  }
+  const { context } = await loadSheetsContext(spreadsheetRows)
 
   // Act
   const students = context.loadStudents?.()
@@ -76,20 +78,20 @@ test('test_loadStudents_when_form_response_sheet_has_only_headers_then_returns_e
   expect(students).toEqual([])
 })
 
-test('test_loadStudents_when_manual_and_unrelated_sheets_exist_then_ignores_them', async () => {
+test('test_loadStudents_when_other_sheets_have_matching_headers_then_reads_named_form_response_sheet', async () => {
   // Arrange
-  const sourceSheetRows = [
-    [
+  const spreadsheetRows = {
+    accounts: [
       ['姓名', '電話', 'Email', '購買堂數'],
       ['王小明', '0912-345-678', 'manual@example.com', '4'],
     ],
-    [
+    '表單回覆 1': [
       ['時間戳記', '姓名', '電話', 'Email', '購買堂數'],
       ['2026/08/03 上午 10:00:00', '陳小華', '0987-654-321', 'another@example.com', '2'],
     ],
-    [['備註', '內容'], ['測試', '不應讀取']],
-  ]
-  const { context } = await loadSheetsContext(sourceSheetRows)
+    notes: [['備註', '內容'], ['測試', '不應讀取']],
+  }
+  const { context } = await loadSheetsContext(spreadsheetRows)
 
   // Act
   const students = context.loadStudents?.()
@@ -101,6 +103,21 @@ test('test_loadStudents_when_manual_and_unrelated_sheets_exist_then_ignores_them
     email: 'another@example.com',
     purchasedLessons: 2,
   }])
+})
+
+test('test_loadAllData_when_using_one_spreadsheet_then_reads_configuration_and_opens_spreadsheet_once', async () => {
+  // Arrange
+  const { context, state } = await loadSheetsContext()
+
+  // Act
+  context.loadStudents?.()
+  context.loadAccounts?.()
+  context.loadCourses?.()
+  context.loadRegistrations?.()
+
+  // Assert
+  expect(state.configurationReads).toBe(1)
+  expect(state.spreadsheetOpenIds).toEqual(['single-spreadsheet'])
 })
 
 test('test_loadAccounts_when_sheet_has_rows_then_returns_accounts', async () => {
@@ -211,7 +228,7 @@ test('test_replaceRegistration_when_id_exists_then_replaces_matching_row', async
   }])
 })
 
-async function loadSheetsContext(sourceSheetRows?: unknown[][][]): Promise<{ context: SheetContext, state: SheetState }> {
+async function loadSheetsContext(spreadsheetRows?: Record<string, unknown[][]>): Promise<{ context: SheetContext, state: SheetState }> {
   const domainSource = await readFile('apps-script/Domain.js', 'utf8')
   let sheetsSource = ''
   try {
@@ -222,6 +239,8 @@ async function loadSheetsContext(sourceSheetRows?: unknown[][][]): Promise<{ con
   }
 
   const state: SheetState = {
+    configurationReads: 0,
+    spreadsheetOpenIds: [],
     writeOperations: [],
     replacedRanges: [],
   }
@@ -266,9 +285,13 @@ async function loadSheetsContext(sourceSheetRows?: unknown[][][]): Promise<{ con
     }),
   })
 
-  const mock_sourceSheets = (sourceSheetRows ?? [formResponseRows]).map(createMockSheet)
-  const mock_operationsSheets = Object.fromEntries(
-    Object.entries(operationsRows).map(([name, rows]) => [name, createMockSheet(rows)]),
+  const allRows = {
+    '表單回覆 1': formResponseRows,
+    ...operationsRows,
+    ...spreadsheetRows,
+  }
+  const mockSheets = Object.fromEntries(
+    Object.entries(allRows).map(([name, rows]) => [name, createMockSheet(rows)]),
   )
   const context = {
     Utilities: {
@@ -276,25 +299,25 @@ async function loadSheetsContext(sourceSheetRows?: unknown[][][]): Promise<{ con
     },
     PropertiesService: {
       getScriptProperties: () => ({
-        getProperties: () => ({
-          SOURCE_SPREADSHEET_ID: 'source-spreadsheet',
-          OPERATIONS_SPREADSHEET_ID: 'operations-spreadsheet',
-          ADMIN_ACCOUNT: 'coach',
-          ADMIN_PASSWORD: 'shared-password',
-          SESSION_SECRET: 'session-secret',
-          LINE_CHANNEL_ID: '2010930267',
-          LINE_CHANNEL_SECRET: 'channel-secret',
-          LINE_REDIRECT_URI: 'https://bingji-delta.vercel.app/auth/line-callback',
-        }),
+        getProperties: () => {
+          state.configurationReads += 1
+          return {
+            SPREADSHEET_ID: 'single-spreadsheet',
+            ADMIN_ACCOUNT: 'coach',
+            ADMIN_PASSWORD: 'shared-password',
+            SESSION_SECRET: 'session-secret',
+            LINE_CHANNEL_ID: '2010930267',
+            LINE_CHANNEL_SECRET: 'channel-secret',
+            LINE_REDIRECT_URI: 'https://bingji-delta.vercel.app/auth/line-callback',
+          }
+        },
       }),
     },
     SpreadsheetApp: {
       openById: (spreadsheetId: string) => {
-        if (spreadsheetId === 'source-spreadsheet') {
-          return { getSheets: () => mock_sourceSheets }
-        }
+        state.spreadsheetOpenIds.push(spreadsheetId)
         return {
-          getSheetByName: (name: string) => mock_operationsSheets[name],
+          getSheetByName: (name: string) => mockSheets[name],
         }
       },
     },

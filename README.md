@@ -4,17 +4,7 @@ Nuxt 靜態前端透過 Google Apps Script 讀寫 Google Sheet。
 
 ## Google Sheet 設定
 
-建立兩個 Spreadsheet。
-
-### 原始報名 Spreadsheet
-
-人工維護分頁的第一列必須依序為：
-
-```text
-姓名 | 電話 | Email | 購買堂數
-```
-
-Apps Script 只讀取這份資料，不會修改。
+使用一個 Spreadsheet，集中表單回覆與營運資料。
 
 ### Google Form 報名
 
@@ -24,13 +14,17 @@ Google Form 使用以下四個必填簡答欄位，名稱與順序必須一致�
 姓名 | 電話 | Email | 購買堂數
 ```
 
-將表單回應連結到原始報名 Spreadsheet。Google 會建立包含 `時間戳記` 的表單回應分頁；Apps Script 只會合併欄位符合上述格式的分頁，其他分頁不受影響。表單不限制每人只能回覆一次，避免要求學員登入 Google 帳號；同一電話重複填表時採用最後一筆，若人工名單已有該電話則以人工名單為準。
+將表單回應連結到 Spreadsheet。Google 會建立 `表單回覆 1` 分頁，第一列依序為：
+
+```text
+時間戳記 | 姓名 | 電話 | Email | 購買堂數
+```
+
+Apps Script 固定讀取這個分頁。表單不限制每人只能回覆一次，避免要求學員登入 Google 帳號；同一電話重複填表時採用最後一筆。
 
 送出後確認訊息應包含正式學員登入網址，讓學員回到網站重新使用 LINE 登入。
 
-### 營運 Spreadsheet
-
-建立以下三個分頁，名稱與第一列欄位必須完全一致：
+在同一個 Spreadsheet 建立以下三個營運分頁，名稱與第一列欄位必須完全一致：
 
 ```text
 accounts
@@ -52,8 +46,7 @@ id | courseId | phone | status | createdAt | updatedAt
 在 Apps Script 專案的「專案設定 > 指令碼屬性」加入：
 
 ```text
-SOURCE_SPREADSHEET_ID=原始報名 Spreadsheet ID
-OPERATIONS_SPREADSHEET_ID=營運 Spreadsheet ID
+SPREADSHEET_ID=包含表單回覆與營運分頁的 Spreadsheet ID
 ADMIN_ACCOUNT=教練共用帳號
 ADMIN_PASSWORD=教練共用密碼
 SESSION_SECRET=自訂的長隨機字串
@@ -154,9 +147,9 @@ https://你的前端網域/auth/line-callback
 
 所有環境的 `NUXT_PUBLIC_LINE_REDIRECT_URI` 都使用正式環境 URL，完整 LINE 登入流程只在正式環境驗證。
 
-學員首次 LINE 登入時，輸入 Google Form 報名用的電話。系統確認電話存在後，將 LINE user ID 寫入營運 Spreadsheet 的 `accounts` 分頁。之後只需使用 LINE 登入。
+學員首次 LINE 登入時，輸入 Google Form 報名用的電話。系統確認電話存在後，將 LINE user ID 寫入同一個 Spreadsheet 的 `accounts` 分頁。之後只需使用 LINE 登入。
 
-找不到電話時，前端會導向 `NUXT_PUBLIC_REGISTRATION_FORM_URL`，並以 `{phone}` 預填剛才輸入的電話。Google Form 回應必須連結至原始報名 Spreadsheet；Apps Script 會合併讀取既有名單與表單回應分頁。
+找不到電話時，前端會導向 `NUXT_PUBLIC_REGISTRATION_FORM_URL`，並以 `{phone}` 預填剛才輸入的電話。Google Form 回應必須連結至 `SPREADSHEET_ID` 指向的 Spreadsheet。
 
 教練直接從 `/admin` 使用共用帳號密碼登入。學員首頁不顯示教練入口。`ADMIN_ACCOUNT` 與 `ADMIN_PASSWORD` 只設定在 Apps Script 的指令碼屬性，不需要寫入 Sheet。
 
