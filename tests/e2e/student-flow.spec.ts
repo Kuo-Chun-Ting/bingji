@@ -25,6 +25,20 @@ const dashboard: StudentDashboard = {
   registrations: [],
 }
 
+const dashboardWithTwoCourses: StudentDashboard = {
+  ...dashboard,
+  courses: [
+    ...dashboard.courses,
+    {
+      id: 'course-2',
+      date: '2026-08-16',
+      startTime: '09:00',
+      endTime: '11:00',
+      isOpen: true,
+    },
+  ],
+}
+
 const registration: Registration = {
   id: 'registration-1',
   courseId: 'course-1',
@@ -76,6 +90,52 @@ test('test_studentDashboard_when_course_is_available_then_registers_course', asy
   // Assert
   await expect(page.getByRole('button', { name: '報名' })).toHaveCount(0)
   await expect(page.getByText('已報名')).toBeVisible()
+})
+
+test('test_studentDashboard_when_two_registrations_are_pending_then_keeps_both_buttons_processing', async ({ page }) => {
+  // Arrange
+  await page.addInitScript(() => {
+    window.localStorage.setItem('ski_session', JSON.stringify({
+      token: 'student-token',
+      role: 'student',
+    }))
+  })
+  let resolveFirstRegistration: (() => void) | null = null
+  let resolveSecondRegistration: (() => void) | null = null
+  await stubAppsScript(page, {
+    getStudentDashboard: () => appsScriptSuccess(dashboardWithTwoCourses),
+    registerCourse: async (payload) => {
+      await new Promise<void>((resolve) => {
+        if (payload.courseId === 'course-1') {
+          resolveFirstRegistration = resolve
+          return
+        }
+
+        resolveSecondRegistration = resolve
+      })
+
+      return appsScriptSuccess({
+        registration: {
+          ...registration,
+          id: `registration-${payload.courseId}`,
+          courseId: payload.courseId,
+        },
+      })
+    },
+  })
+  await page.goto('/student')
+
+  // Act
+  await page.getByRole('button', { name: '報名' }).first().click()
+  await expect(page.getByRole('button', { name: '處理中' })).toHaveCount(1)
+  await page.getByRole('button', { name: '報名' }).first().click()
+
+  // Assert
+  await expect(page.getByRole('button', { name: '處理中' })).toHaveCount(2)
+
+  resolveFirstRegistration?.()
+  resolveSecondRegistration?.()
+  await expect(page.getByText('已報名')).toHaveCount(2)
 })
 
 test('test_studentDashboard_when_session_is_invalid_then_returns_to_login', async ({ page }) => {

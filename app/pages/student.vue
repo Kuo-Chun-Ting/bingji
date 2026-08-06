@@ -10,7 +10,7 @@ const session = ref<AuthSession | null>(null)
 const dashboard = ref<StudentDashboard | null>(null)
 const errorMessage = ref('')
 const isLoading = ref(true)
-const registeringCourseId = ref<string | null>(null)
+const registeringCourseIds = ref<string[]>([])
 
 const availableCourses = computed(() => {
   if (!dashboard.value) {
@@ -67,11 +67,11 @@ async function loadDashboard(): Promise<void> {
 }
 
 async function registerForCourse(courseId: string): Promise<void> {
-  if (!session.value) {
+  if (!session.value || isRegisteringCourse(courseId)) {
     return
   }
 
-  registeringCourseId.value = courseId
+  registeringCourseIds.value = [...registeringCourseIds.value, courseId]
   errorMessage.value = ''
   try {
     const response = await callAppsScriptAction<{ registration: Registration }>(
@@ -88,8 +88,12 @@ async function registerForCourse(courseId: string): Promise<void> {
     }
     errorMessage.value = getErrorMessage(error, '無法完成報名，請稍後再試。')
   } finally {
-    registeringCourseId.value = null
+    registeringCourseIds.value = registeringCourseIds.value.filter(registeringCourseId => registeringCourseId !== courseId)
   }
+}
+
+function isRegisteringCourse(courseId: string): boolean {
+  return registeringCourseIds.value.includes(courseId)
 }
 
 async function logout(): Promise<void> {
@@ -153,7 +157,7 @@ async function redirectWhenSessionIsInvalid(error: unknown): Promise<boolean> {
             :key="course.id"
             :course="course"
             show-registration-action
-            :is-registering="registeringCourseId === course.id"
+            :is-registering="isRegisteringCourse(course.id)"
             @register="registerForCourse(course.id)"
           />
         </div>
